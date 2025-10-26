@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: trading-bot-ollama-prod
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - trading-network
+
+  trading-bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading-bot-app
+    depends_on:
+      - ollama
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./user_data:/app/user_data
+      - ./config:/app/config:ro
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - BINANCE_API_KEY=${BINANCE_API_KEY}
+      - BINANCE_API_SECRET=${BINANCE_API_SECRET}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - DRY_RUN=${DRY_RUN:-true}
+    restart: unless-stopped
+    networks:
+      - trading-network
+    ports:
+      - "8080:8080"  # API server
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/api/v1/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+networks:
+  trading-network:
+    driver: bridge
+
+volumes:
+  ollama_models:
+    driver: local

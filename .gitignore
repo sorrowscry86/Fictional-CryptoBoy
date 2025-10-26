@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Environment variables
+.env
+*.env
+!.env.example
+
+# API Keys and Secrets
+**/api_keys.json
+**/secrets.json
+config/*_secrets.yml
+config/*_api_keys.json
+
+# Trading Data
+data/ohlcv_data/*.csv
+data/news_data/*.csv
+data/sentiment_scores.csv
+*.db
+*.sqlite
+
+# Logs
+logs/
+*.log
+monitoring/logs/*.log
+
+# Backtest Results
+backtest/backtest_reports/*.html
+backtest/backtest_reports/*.json
+backtest/backtest_reports/*.png
+
+# Docker
+.docker/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Freqtrade
+user_data/
+.hyperopt/
