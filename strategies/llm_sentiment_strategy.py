@@ -61,8 +61,8 @@ class LLMSentimentStrategy(IStrategy):
 
     # Sentiment configuration
     sentiment_data_path = "data/sentiment_signals.csv"
-    sentiment_buy_threshold = 0.7
-    sentiment_sell_threshold = -0.5
+    sentiment_buy_threshold = 0.3  # Lowered from 0.7 to trigger trades with available data
+    sentiment_sell_threshold = -0.3  # Adjusted to match buy threshold
 
     # Technical indicator parameters
     rsi_period = 14
@@ -112,7 +112,12 @@ class LLMSentimentStrategy(IStrategy):
                 return
 
             self.sentiment_df = pd.read_csv(sentiment_path)
-            self.sentiment_df['timestamp'] = pd.to_datetime(self.sentiment_df['timestamp'])
+            
+            # Convert timestamp to datetime (timezone-naive for consistency with Freqtrade)
+            self.sentiment_df['timestamp'] = pd.to_datetime(
+                self.sentiment_df['timestamp'], 
+                utc=True
+            ).dt.tz_localize(None)
 
             # Sort by timestamp
             self.sentiment_df = self.sentiment_df.sort_values('timestamp')
@@ -138,6 +143,13 @@ class LLMSentimentStrategy(IStrategy):
             return 0.0
 
         try:
+            # Ensure timestamp is timezone-naive
+            if hasattr(timestamp, 'tz') and timestamp.tz is not None:
+                timestamp = timestamp.tz_localize(None)
+            
+            # Convert to pandas Timestamp for comparison
+            timestamp = pd.Timestamp(timestamp)
+            
             # Find the most recent sentiment before or at this timestamp
             mask = self.sentiment_df['timestamp'] <= timestamp
             matching_rows = self.sentiment_df[mask]
