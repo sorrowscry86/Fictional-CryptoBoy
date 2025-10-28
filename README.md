@@ -434,6 +434,21 @@ freqtrade test-strategy --config config/backtest_config.json --strategy LLMSenti
 
 ---
 
+## 📚 Project Documentation
+
+- Developer Guide: docs/DEVELOPER_GUIDE.md
+- API Reference: docs/API_REFERENCE.md
+- Examples and Recipes: docs/EXAMPLES.md
+- LM Studio Setup: docs/LMSTUDIO_SETUP.md
+- Monitor Color Guide: docs/MONITOR_COLOR_GUIDE.md
+- Sentiment Model Comparison: docs/SENTIMENT_MODEL_COMPARISON.md
+- Quick Start: QUICKSTART.md
+- API Setup Guide: API_SETUP_GUIDE.md
+- Launcher Guide: LAUNCHER_GUIDE.md
+- Data Pipeline Summary: DATA_PIPELINE_SUMMARY.md
+
+---
+
 ## 📚 Resources
 
 - [Freqtrade Documentation](https://www.freqtrade.io/)
