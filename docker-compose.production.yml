@@ -1,6 +1,44 @@
 version: '3.8'
 
 services:
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: trading-rabbitmq-prod
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-cryptoboy}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-cryptoboy123}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - trading-network
+
+  redis:
+    image: redis:alpine
+    container_name: trading-redis-prod
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - trading-network
+
   ollama:
     image: ollama/ollama:latest
     container_name: trading-bot-ollama-prod
@@ -20,6 +58,78 @@ services:
     networks:
       - trading-network
 
+  market-streamer:
+    build:
+      context: .
+      dockerfile: services/data_ingestor/Dockerfile
+    container_name: trading-market-streamer
+    depends_on:
+      - rabbitmq
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-cryptoboy}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:-cryptoboy123}
+      - BINANCE_API_KEY=${BINANCE_API_KEY}
+      - BINANCE_API_SECRET=${BINANCE_API_SECRET}
+    restart: unless-stopped
+    networks:
+      - trading-network
+
+  news-poller:
+    build:
+      context: .
+      dockerfile: services/data_ingestor/Dockerfile
+    container_name: trading-news-poller
+    depends_on:
+      - rabbitmq
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-cryptoboy}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:-cryptoboy123}
+    command: python -m services.data_ingestor.news_poller
+    restart: unless-stopped
+    networks:
+      - trading-network
+
+  sentiment-processor:
+    build:
+      context: .
+      dockerfile: services/sentiment_analyzer/Dockerfile
+    container_name: trading-sentiment-processor
+    depends_on:
+      - rabbitmq
+      - ollama
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-cryptoboy}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:-cryptoboy123}
+      - OLLAMA_HOST=http://ollama:11434
+    restart: unless-stopped
+    networks:
+      - trading-network
+
+  signal-cacher:
+    build:
+      context: .
+      dockerfile: services/signal_cacher/Dockerfile
+    container_name: trading-signal-cacher
+    depends_on:
+      - rabbitmq
+      - redis
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=${RABBITMQ_USER:-cryptoboy}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:-cryptoboy123}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    restart: unless-stopped
+    networks:
+      - trading-network
+
   trading-bot:
     build:
       context: .
@@ -27,6 +137,8 @@ services:
     container_name: trading-bot-app
     depends_on:
       - ollama
+      - redis
+      - rabbitmq
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
@@ -34,6 +146,8 @@ services:
       - ./config:/app/config:ro
     environment:
       - OLLAMA_HOST=http://ollama:11434
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
       - BINANCE_API_KEY=${BINANCE_API_KEY}
       - BINANCE_API_SECRET=${BINANCE_API_SECRET}
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
@@ -57,4 +171,8 @@ networks:
 
 volumes:
   ollama_models:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  redis_data:
     driver: local
