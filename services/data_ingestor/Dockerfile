@@ -13,8 +13,10 @@ COPY services/requirements.txt /app/services/requirements.txt
 # Install Python dependencies
 RUN pip install --no-cache-dir -r /app/services/requirements.txt
 
-# Copy application code
-COPY services/ /app/services/
+# Copy application code (only what this service needs)
+COPY services/__init__.py /app/services/
+COPY services/common/ /app/services/common/
+COPY services/data_ingestor/ /app/services/data_ingestor/
 COPY data/ /app/data/
 COPY llm/ /app/llm/
 

@@ -13,8 +13,10 @@ COPY services/requirements.txt /app/services/requirements.txt
 # Install Python dependencies
 RUN pip install --no-cache-dir -r /app/services/requirements.txt
 
-# Copy application code
-COPY services/ /app/services/
+# Copy application code (only what this service needs)
+COPY services/__init__.py /app/services/
+COPY services/common/ /app/services/common/
+COPY services/sentiment_analyzer/ /app/services/sentiment_analyzer/
 COPY llm/ /app/llm/
 
 # Set Python path

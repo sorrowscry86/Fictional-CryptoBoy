@@ -3,13 +3,9 @@ Sentiment Processor Service - Consumes news and publishes sentiment signals
 Integrates with Ollama LLM for sentiment analysis
 """
 import os
-import sys
 import re
 from datetime import datetime
 from typing import Dict, Any, List
-
-# Add parent directories to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from services.common.rabbitmq_client import RabbitMQClient, create_consumer_callback
 from services.common.logging_config import setup_logging

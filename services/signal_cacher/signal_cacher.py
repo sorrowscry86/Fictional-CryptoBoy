@@ -2,13 +2,10 @@
 Signal Cacher Service - Caches sentiment signals in Redis
 Provides fast access to latest sentiment scores for trading strategies
 """
+import json
 import os
-import sys
 from datetime import datetime
 from typing import Dict, Any
-
-# Add parent directories to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from services.common.rabbitmq_client import RabbitMQClient, create_consumer_callback
 from services.common.redis_client import RedisClient
