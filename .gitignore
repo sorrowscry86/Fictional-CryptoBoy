@@ -57,3 +57,7 @@ Thumbs.db
 # Freqtrade
 user_data/
 .hyperopt/
+
+
+#Ignore insiders AI rules
+.github\instructions\codacy.instructions.md
