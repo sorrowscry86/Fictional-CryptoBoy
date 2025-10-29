@@ -391,7 +391,7 @@ docker exec -it trading-redis-prod redis-cli
 HGETALL sentiment:BTC/USDT
 
 # View all sentiment keys
-KEYS sentiment:*
+SCAN 0 MATCH sentiment:*
 
 # Check key expiration
 TTL sentiment:BTC/USDT
