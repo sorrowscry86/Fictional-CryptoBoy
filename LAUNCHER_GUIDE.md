@@ -1,133 +1,140 @@
 # CryptoBoy System Launcher - Quick Reference
 
-## 🚀 One-Click System Launch
+**VoidCat RDC - Microservice Architecture Control System**
 
-Three ways to start the complete CryptoBoy trading system:
+## 🚀 Launch Options
 
-### Option 1: Batch File (CMD/PowerShell Compatible)
+### Primary Launcher (Recommended)
+```bash
+launcher.bat
+```
+**Interactive menu with all system operations**
+
+### Direct System Start
 ```bash
 start_cryptoboy.bat
 ```
-**Or double-click:** `start_cryptoboy.bat`
+**Mode Selection:**
+1. Microservice Architecture (Full Stack)
+2. Legacy Monolithic Mode
+3. Status Check Only
 
-### Option 2: PowerShell Script (Enhanced)
+### PowerShell Enhanced Start
 ```powershell
 .\start_cryptoboy.ps1
 ```
-**Or right-click → Run with PowerShell**
+**Advanced features with detailed health checks**
 
-### Option 3: Desktop Shortcut
+### Desktop Shortcut
 1. Run: `create_desktop_shortcut.bat`
-2. Double-click the desktop icon: **CryptoBoy Trading System**
+2. Double-click: **CryptoBoy Trading System**
 
 ---
 
-## 📋 What the System Launcher Does
+## 📋 Microservice Startup Sequence
 
-### Automatic Startup Sequence:
+### Automatic Launch (Mode 1):
 
 **Step 1: Docker Check** ✓
 - Verifies Docker Desktop is running
 - Displays Docker version
 
-**Step 2: Python Verification** ✓ (PowerShell only)
-- Confirms Python is installed
-- Shows Python version
+**Step 2: Environment Variables** ✓
+- Checks RABBITMQ_USER and RABBITMQ_PASS
+- Uses defaults if not set (admin/cryptoboy_secret)
 
-**Step 3: Trading Bot Launch** ✓
-- Starts Docker container (creates if needed)
-- Waits for initialization (5 seconds)
-- Confirms bot is running
+**Step 3: Infrastructure Services** ✓
+- Starts RabbitMQ (message broker)
+- Starts Redis (cache server)
+- Health check verification (8 seconds)
 
-**Step 4: Health Check** ✓
-- Verifies bot status
-- Shows loaded sentiment signals
-- Displays active trading pairs
+**Step 4: Microservices Launch** ✓
+- Market Data Streamer (CCXT WebSocket)
+- News Poller (RSS aggregation)
+- Sentiment Processor (LLM analysis)
+- Signal Cacher (Redis writer)
+- Initialization wait (5 seconds)
 
-**Step 5: System Status** ✓
-- Container information
-- Data file status
-- Last update timestamps
+**Step 5: Trading Bot** ✓
+- Freqtrade container startup
+- Strategy loading from Redis cache
+- Initialization (5 seconds)
 
-**Step 6: Monitor Dashboard** ✓
-- Syncs database from container
-- Launches live monitoring
-- Auto-refresh every 15 seconds
+**Step 6: Health Check** ✓
+- All service status verification
+- RabbitMQ queue inspection
+- Redis cache validation
 
----
-
-## 🎯 All Launcher Features
-
-| Feature | Batch (.bat) | PowerShell (.ps1) |
-|---------|--------------|-------------------|
-| Docker check | ✓ | ✓ |
-| Python check | ✗ | ✓ |
-| Auto-start bot | ✓ | ✓ |
-| Health verification | ✓ | ✓ |
-| Data file status | ✓ | ✓ |
-| Live monitor | ✓ | ✓ |
-| Color output | ✓ | ✓ Enhanced |
-| Detailed logging | Basic | Advanced |
-| Error handling | ✓ | ✓ Enhanced |
+**Step 7: Monitoring Dashboard** ✓
+- Auto-launches real-time monitor
+- 15-second refresh interval
+- Press Ctrl+C to exit (services keep running)
 
 ---
 
-## 📊 What You'll See
+## 🎯 Complete Batch File Reference
 
-### During Startup:
-```
-================================================================================
-                  CRYPTOBOY TRADING SYSTEM - VOIDCAT RDC
-================================================================================
+### System Control
+| File | Purpose | Use When |
+|------|---------|----------|
+| **launcher.bat** | Main interactive menu | General operation, new users |
+| **start_cryptoboy.bat** | Start trading system | First launch or after shutdown |
+| **stop_cryptoboy.bat** | Stop all services | End of day, maintenance |
+| **restart_service.bat** | Restart individual service | Service errors, updates |
+| **check_status.bat** | Quick health check | Verify system state |
 
-[STEP 1/6] Checking Docker...
-[OK] Docker is running
-  Docker version: 24.0.7
+### Monitoring & Logs
+| File | Purpose | Use When |
+|------|---------|----------|
+| **start_monitor.bat** | Launch dashboard | Monitor active trading |
+| **view_logs.bat** | Tail service logs | Debug issues, track events |
 
-[STEP 2/6] Checking Python...
-[OK] Python is available
-  Python 3.11.4
+### Utilities
+| File | Purpose | Use When |
+|------|---------|----------|
+| **add_to_startup.bat** | Auto-start on Windows login | Production deployment |
+| **remove_from_startup.bat** | Remove auto-start | Development mode |
+| **create_desktop_shortcut.bat** | Create desktop icon | Easy access |
 
-[STEP 3/6] Starting Trading Bot...
-[OK] Trading bot is already running
-  Status: Up 2 hours
+---
 
-[STEP 4/6] Checking Bot Health...
-[OK] Bot is healthy and running
-  Sentiment signals loaded: 166
-  Trading pairs: 3
+## 📊 Monitor Dashboard Features
 
-[STEP 5/6] System Status Overview...
-  --- Trading Bot Container ---
-    Name: trading-bot-app
-    Status: Up 2 hours
-    Ports: 0.0.0.0:8080->8080/tcp
-
-  --- Data Files ---
-[OK] Sentiment data available
-    Last modified: 2025-10-28 09:15:30
-    Signals: 166
-
-[STEP 6/6] Launching Trading Monitor...
-```
-
-### Then the monitor displays:
+### Real-Time Display:
 ```
 ================================================================================
   [*] CRYPTOBOY TRADING MONITOR - VOIDCAT RDC
+  Microservice Architecture - Redis Cache Mode
 ================================================================================
   [BALANCE] | Starting: 1000.00 USDT | Current: 1005.14 USDT | P/L: + +5.14 USDT
+  Available: 950.00 USDT | Locked in Trades: 55.14 USDT
 
   [STATS] OVERALL STATISTICS
-  Total Trades: 5
-  Win Rate: * 80.00%
-  Total Profit: + +5.14 USDT
+  Total Trades:      5
+  Winning Trades:    + 4
+  Losing Trades:     - 1
+  Win Rate:          * 80.00%
+  Total Profit:      !+ +5.14 USDT
+  Avg Profit:        1.03%
+  Best Trade:        + +2.55%
+  Worst Trade:       - -0.80%
+
+  [CHART] PERFORMANCE BY PAIR
+  BTC/USDT     | Trades:   2 | Win Rate:  50.0% | P/L: + +2.10 USDT
+  ETH/USDT     | Trades:   2 | Win Rate: 100.0% | P/L: + +4.20 USDT
+  SOL/USDT     | Trades:   1 | Win Rate: 100.0% | P/L: + +1.28 USDT
+
+  [OPEN] OPEN TRADES (1)
+  ID   5 | ETH/USDT     | Entry: $2720.00 | Amount: 0.0184 | Stake: 50.00 USDT | Duration: 2.3h
 
   [ACTIVITY] RECENT TRADE UPDATES (Last 2 Hours)
-  [09:29:32] ENTERED ETH/USDT | Rate: $2720.00 | Stake: 50.00 USDT
+  [09:29:32] ENTERED ETH/USDT | Rate: $2720.00 | Stake: 50.00 USDT | ID: 5
   [09:24:32] EXITED  SOL/USDT | P/L: + +2.55% (+1.28 USDT) | Reason: roi
 
   [NEWS] RECENT SENTIMENT HEADLINES
+  + BULLISH | Bitcoin ETF sees record inflows as institutional adoption surges
+  - BEARISH | SEC announces new crypto regulation framework for 2026
+  = NEUTRAL | Ethereum developers target Q2 for next major upgrade
   + BULLISH | Coinbase Prime and Figment expand institutional staking...
 ```
 
