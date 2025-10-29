@@ -24,29 +24,43 @@ class MarketDataCollector:
         self,
         api_key: Optional[str] = None,
         api_secret: Optional[str] = None,
-        data_dir: str = "data/ohlcv_data"
+        data_dir: str = "data/ohlcv_data",
+        exchange_name: str = "coinbase"
     ):
         """
         Initialize the market data collector
 
         Args:
-            api_key: Binance API key (optional for public data)
-            api_secret: Binance API secret (optional for public data)
+            api_key: Exchange API key (optional for public data)
+            api_secret: Exchange API secret (optional for public data)
             data_dir: Directory to store historical data
+            exchange_name: Exchange to use ('coinbase', 'binance', etc.)
         """
-        self.exchange = ccxt.binance({
-            'apiKey': api_key or os.getenv('BINANCE_API_KEY', ''),
-            'secret': api_secret or os.getenv('BINANCE_API_SECRET', ''),
+        # Get credentials from environment if not provided
+        if exchange_name == 'coinbase':
+            api_key = api_key or os.getenv('COINBASE_API_KEY', '')
+            api_secret = api_secret or os.getenv('COINBASE_API_SECRET', '')
+        else:
+            api_key = api_key or os.getenv('BINANCE_API_KEY', '')
+            api_secret = api_secret or os.getenv('BINANCE_API_SECRET', '')
+        
+        # Initialize exchange
+        exchange_class = getattr(ccxt, exchange_name)
+        self.exchange = exchange_class({
+            'apiKey': api_key,
+            'secret': api_secret,
             'enableRateLimit': True,  # Automatic rate limiting
             'options': {
                 'defaultType': 'spot',
             }
         })
+        
+        self.exchange_name = exchange_name
 
         self.data_dir = Path(data_dir)
         self.data_dir.mkdir(parents=True, exist_ok=True)
 
-        logger.info(f"Initialized MarketDataCollector with data_dir: {self.data_dir}")
+        logger.info(f"Initialized MarketDataCollector with {exchange_name} exchange, data_dir: {self.data_dir}")
 
     def get_historical_ohlcv(
         self,
@@ -291,10 +305,10 @@ if __name__ == "__main__":
     from dotenv import load_dotenv
     load_dotenv()
 
-    collector = MarketDataCollector()
+    collector = MarketDataCollector(exchange_name='coinbase')
 
-    # Fetch and save historical data for BTC/USDT
-    symbols = ['BTC/USDT', 'ETH/USDT']
+    # Fetch and save historical data for trading pairs
+    symbols = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
 
     for symbol in symbols:
         logger.info(f"Processing {symbol}...")
