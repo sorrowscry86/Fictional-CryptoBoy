@@ -135,7 +135,10 @@ class LLMSentimentStrategy(IStrategy):
                 return 0.0
 
             # Check if sentiment is reasonably fresh
-            cached_ts = pd.to_datetime(cached_data.get('timestamp', '1970-01-01'))
+            cached_ts = pd.to_datetime(cached_data.get('timestamp', '1970-01-01'), utc=True)
+            # Make current_candle_timestamp timezone-aware if needed
+            if current_candle_timestamp.tzinfo is None:
+                current_candle_timestamp = current_candle_timestamp.tz_localize('UTC')
             age = (current_candle_timestamp - cached_ts).total_seconds() / 3600  # hours
 
             if age > self.sentiment_stale_hours:
