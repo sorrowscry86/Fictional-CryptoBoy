@@ -7,11 +7,11 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY services/requirements.txt /app/services/requirements.txt
+# Copy requirements (ingestor-specific)
+COPY services/requirements-ingestor.txt /app/services/requirements-ingestor.txt
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r /app/services/requirements.txt
+RUN pip install --no-cache-dir -r /app/services/requirements-ingestor.txt
 
 # Copy application code (only what this service needs)
 COPY services/__init__.py /app/services/

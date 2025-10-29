@@ -79,7 +79,7 @@ services:
   news-poller:
     build:
       context: .
-      dockerfile: services/data_ingestor/Dockerfile
+      dockerfile: services/data_ingestor/Dockerfile.news
     container_name: trading-news-poller
     depends_on:
       - rabbitmq
@@ -88,7 +88,6 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=${RABBITMQ_USER:-cryptoboy}
       - RABBITMQ_PASS=${RABBITMQ_PASS:-cryptoboy123}
-    command: python -m services.data_ingestor.news_poller
     restart: unless-stopped
     networks:
       - trading-network

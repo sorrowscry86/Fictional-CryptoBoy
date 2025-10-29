@@ -7,11 +7,11 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements
-COPY services/requirements.txt /app/services/requirements.txt
+# Copy requirements (common)
+COPY services/requirements-common.txt /app/services/requirements-common.txt
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r /app/services/requirements.txt
+RUN pip install --no-cache-dir -r /app/services/requirements-common.txt
 
 # Copy application code (only what this service needs)
 COPY services/__init__.py /app/services/
