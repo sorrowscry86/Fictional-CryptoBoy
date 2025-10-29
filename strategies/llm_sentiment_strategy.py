@@ -3,7 +3,8 @@ LLM Sentiment Trading Strategy for Freqtrade
 Combines technical indicators with LLM-based sentiment analysis
 """
 import logging
-from datetime import datetime
+import os
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 import pandas as pd
@@ -12,6 +13,7 @@ from pandas import DataFrame
 from freqtrade.strategy import IStrategy, informative
 import talib.abstract as ta
 from freqtrade.persistence import Trade
+import redis
 
 logger = logging.getLogger(__name__)
 
@@ -60,9 +62,9 @@ class LLMSentimentStrategy(IStrategy):
     exit_profit_offset = 0.0
 
     # Sentiment configuration
-    sentiment_data_path = "data/sentiment_signals.csv"
-    sentiment_buy_threshold = 0.3  # Lowered from 0.7 to trigger trades with available data
-    sentiment_sell_threshold = -0.3  # Adjusted to match buy threshold
+    sentiment_buy_threshold = 0.7
+    sentiment_sell_threshold = -0.5
+    sentiment_stale_hours = 4  # Consider sentiment stale after this many hours
 
     # Technical indicator parameters
     rsi_period = 14
@@ -79,96 +81,79 @@ class LLMSentimentStrategy(IStrategy):
         """Initialize strategy"""
         super().__init__(config)
 
-        self.sentiment_df = None
-        self.last_sentiment_load = None
-        self.sentiment_load_interval = 3600  # Reload every hour
+        # Initialize Redis client for sentiment cache
+        redis_host = os.getenv('REDIS_HOST', 'redis')
+        redis_port = int(os.getenv('REDIS_PORT', 6379))
+
+        try:
+            self.redis_client = redis.Redis(
+                host=redis_host,
+                port=redis_port,
+                db=0,
+                decode_responses=True,
+                socket_connect_timeout=5,
+                socket_keepalive=True,
+                health_check_interval=30
+            )
+            # Test connection
+            self.redis_client.ping()
+            logger.info(f"Connected to Redis at {redis_host}:{redis_port}")
+        except Exception as e:
+            logger.error(f"Failed to connect to Redis: {e}")
+            self.redis_client = None
 
     def bot_start(self, **kwargs) -> None:
         """
         Called only once when the bot starts.
-        Load sentiment data here.
         """
-        logger.info("LLMSentimentStrategy started")
-        self._load_sentiment_data()
+        logger.info("LLMSentimentStrategy started with Redis cache")
+        if self.redis_client:
+            logger.info("Redis connection active - real-time sentiment enabled")
+        else:
+            logger.warning("Redis connection unavailable - sentiment signals disabled")
 
-    def bot_loop_start(self, current_time: datetime, **kwargs) -> None:
+    def _get_sentiment_score(self, pair: str, current_candle_timestamp: pd.Timestamp) -> float:
         """
-        Called at the start of each bot loop.
-        Reload sentiment data periodically.
-        """
-        if (self.last_sentiment_load is None or
-            (current_time - self.last_sentiment_load).total_seconds() > self.sentiment_load_interval):
-            self._load_sentiment_data()
-            self.last_sentiment_load = current_time
-
-    def _load_sentiment_data(self) -> None:
-        """Load sentiment data from CSV file"""
-        try:
-            sentiment_path = Path(self.sentiment_data_path)
-
-            if not sentiment_path.exists():
-                logger.warning(f"Sentiment data not found at {sentiment_path}")
-                self.sentiment_df = None
-                return
-
-            self.sentiment_df = pd.read_csv(sentiment_path)
-            
-            # Convert timestamp to datetime (timezone-naive for consistency with Freqtrade)
-            self.sentiment_df['timestamp'] = pd.to_datetime(
-                self.sentiment_df['timestamp'], 
-                utc=True
-            ).dt.tz_localize(None)
-
-            # Sort by timestamp
-            self.sentiment_df = self.sentiment_df.sort_values('timestamp')
-
-            logger.info(f"Loaded {len(self.sentiment_df)} sentiment records")
-            logger.debug(f"Sentiment date range: {self.sentiment_df['timestamp'].min()} to {self.sentiment_df['timestamp'].max()}")
-
-        except Exception as e:
-            logger.error(f"Error loading sentiment data: {e}")
-            self.sentiment_df = None
-
-    def _get_sentiment_score(self, timestamp: datetime) -> float:
-        """
-        Get sentiment score for a given timestamp
+        Get sentiment score for a given pair from Redis cache
 
         Args:
-            timestamp: The timestamp to look up
+            pair: Trading pair (e.g., 'BTC/USDT')
+            current_candle_timestamp: The timestamp of the current candle
 
         Returns:
-            Sentiment score (0.0 if not found)
+            Sentiment score (0.0 if not found or stale)
         """
-        if self.sentiment_df is None or self.sentiment_df.empty:
+        if not self.redis_client:
             return 0.0
 
         try:
-            # Ensure timestamp is timezone-naive
-            if hasattr(timestamp, 'tz') and timestamp.tz is not None:
-                timestamp = timestamp.tz_localize(None)
-            
-            # Convert to pandas Timestamp for comparison
-            timestamp = pd.Timestamp(timestamp)
-            
-            # Find the most recent sentiment before or at this timestamp
-            mask = self.sentiment_df['timestamp'] <= timestamp
-            matching_rows = self.sentiment_df[mask]
+            key = f"sentiment:{pair}"
+            cached_data = self.redis_client.hgetall(key)
 
-            if matching_rows.empty:
+            if not cached_data or 'score' not in cached_data:
+                logger.debug(f"No sentiment found for {pair}")
                 return 0.0
 
-            # Get the most recent sentiment
-            latest_sentiment = matching_rows.iloc[-1]
-            score = latest_sentiment.get('sentiment_score', 0.0)
+            # Check if sentiment is reasonably fresh
+            cached_ts = pd.to_datetime(cached_data.get('timestamp', '1970-01-01'))
+            age = (current_candle_timestamp - cached_ts).total_seconds() / 3600  # hours
 
-            # Check if smoothed sentiment is available
-            if 'smoothed_sentiment' in matching_rows.columns:
-                score = latest_sentiment.get('smoothed_sentiment', score)
+            if age > self.sentiment_stale_hours:
+                logger.debug(
+                    f"Stale sentiment for {pair}: {age:.1f} hours old "
+                    f"(threshold: {self.sentiment_stale_hours}h)"
+                )
+                return 0.0
 
-            return float(score)
+            score = float(cached_data['score'])
+            logger.debug(
+                f"Sentiment for {pair}: {score:+.2f} "
+                f"(age: {age:.1f}h, headline: {cached_data.get('headline', '')[:30]}...)"
+            )
+            return score
 
         except Exception as e:
-            logger.error(f"Error getting sentiment score: {e}")
+            logger.error(f"Error fetching sentiment from Redis for {pair}: {e}")
             return 0.0
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -207,17 +192,16 @@ class LLMSentimentStrategy(IStrategy):
         # ATR for volatility
         dataframe['atr'] = ta.ATR(dataframe, timeperiod=14)
 
-        # Add sentiment scores
-        dataframe['sentiment'] = 0.0
-        for idx, row in dataframe.iterrows():
-            timestamp = row['date']
-            sentiment_score = self._get_sentiment_score(timestamp)
-            dataframe.at[idx, 'sentiment'] = sentiment_score
+        # Add sentiment scores from Redis cache
+        pair = metadata['pair']
+        dataframe['sentiment'] = dataframe['date'].apply(
+            lambda x: self._get_sentiment_score(pair, x)
+        )
 
         # Sentiment momentum (rate of change)
         dataframe['sentiment_momentum'] = dataframe['sentiment'].diff()
 
-        logger.debug(f"Populated indicators for {metadata.get('pair', 'unknown')}")
+        logger.debug(f"Populated indicators for {pair}")
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
@@ -316,7 +300,7 @@ class LLMSentimentStrategy(IStrategy):
         Returns:
             Stake amount to use
         """
-        sentiment_score = self._get_sentiment_score(current_time)
+        sentiment_score = self._get_sentiment_score(pair, pd.Timestamp(current_time))
 
         # Adjust stake based on sentiment strength
         if sentiment_score > 0.8:
@@ -357,7 +341,7 @@ class LLMSentimentStrategy(IStrategy):
             True to allow trade, False to reject
         """
         # Double-check sentiment before entry
-        sentiment = self._get_sentiment_score(current_time)
+        sentiment = self._get_sentiment_score(pair, pd.Timestamp(current_time))
 
         if sentiment < self.sentiment_buy_threshold:
             logger.info(f"Rejecting trade for {pair}: sentiment {sentiment:.2f} below threshold")
@@ -387,7 +371,7 @@ class LLMSentimentStrategy(IStrategy):
             Exit reason string or None
         """
         # Check for sentiment reversal
-        sentiment = self._get_sentiment_score(current_time)
+        sentiment = self._get_sentiment_score(pair, pd.Timestamp(current_time))
 
         if sentiment < -0.3 and current_profit > 0:
             logger.info(f"Exiting {pair} due to sentiment reversal: {sentiment:.2f}")

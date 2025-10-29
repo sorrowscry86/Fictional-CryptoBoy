@@ -17,6 +17,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - trading-network
     # Uncomment below for GPU support (requires nvidia-docker)
     # deploy:
     #   resources:
@@ -26,6 +28,52 @@ services:
     #           count: 1
     #           capabilities: [gpu]
 
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: trading-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-cryptoboy}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-cryptoboy123}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - trading-network
+
+  redis:
+    image: redis:alpine
+    container_name: trading-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - trading-network
+
+networks:
+  trading-network:
+    driver: bridge
+
 volumes:
   ollama_models:
+    driver: local
+  rabbitmq_data:
+    driver: local
+  redis_data:
     driver: local
