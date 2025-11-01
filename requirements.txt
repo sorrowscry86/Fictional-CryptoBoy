@@ -13,6 +13,7 @@ python-binance>=1.0.0
 # Microservices Infrastructure
 redis>=4.5.0
 pika>=1.3.0
+docker>=6.0.0
 
 # News & RSS
 feedparser>=6.0.0

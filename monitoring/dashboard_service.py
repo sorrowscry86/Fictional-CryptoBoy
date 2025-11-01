@@ -21,6 +21,8 @@ from typing import Dict, List, Optional, Any
 import redis
 from aiohttp import web
 import aiohttp
+import docker
+import docker
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -49,6 +51,13 @@ class DashboardMetricsCollector:
     def __init__(self):
         """Initialize metrics collector"""
         self.redis_client = None
+        self.docker_client = None
+        try:
+            self.docker_client = docker.from_env()
+            logger.info("Connected to Docker daemon")
+        except Exception as e:
+            logger.error(f"Failed to connect to Docker: {e}")
+        
         self.websocket_clients = set()
         self.metrics_cache = {}
         self.alert_thresholds = {
@@ -79,37 +88,33 @@ class DashboardMetricsCollector:
             self.redis_client = None
     
     async def collect_docker_stats(self) -> Dict[str, Any]:
-        """Collect Docker container statistics"""
+        """Collect Docker container statistics using Docker SDK"""
         try:
-            # Get container status
-            result = subprocess.run(
-                ['docker', 'compose', '-f', 'docker-compose.production.yml', 'ps', '--format', 'json'],
-                capture_output=True,
-                text=True,
-                timeout=10,
-                cwd=project_root
-            )
+            if not self.docker_client:
+                return {'error': 'Docker client not connected'}
             
-            if result.returncode != 0:
-                logger.error(f"Docker ps failed: {result.stderr}")
-                return {'error': 'Failed to get container status'}
+            # Get all containers
+            all_containers = self.docker_client.containers.list(all=True)
             
             containers = {}
-            for line in result.stdout.strip().split('\n'):
-                if line:
-                    try:
-                        container = json.loads(line)
-                        name = container.get('Name', '')
-                        if name in self.SERVICES:
-                            containers[name] = {
-                                'state': container.get('State', 'unknown'),
-                                'status': container.get('Status', ''),
-                                'health': container.get('Health', 'none'),
-                                'running': container.get('State') == 'running',
-                                'ports': container.get('Ports', '')
-                            }
-                    except json.JSONDecodeError:
-                        continue
+            for container in all_containers:
+                name = container.name
+                if name in self.SERVICES:
+                    # Get container status
+                    status = container.status  # running, exited, etc.
+                    health_status = 'none'
+                    
+                    # Try to get health check status
+                    if container.attrs.get('State', {}).get('Health'):
+                        health_status = container.attrs['State']['Health'].get('Status', 'none')
+                    
+                    containers[name] = {
+                        'state': status,
+                        'status': container.attrs.get('State', {}).get('Status', ''),
+                        'health': health_status,
+                        'running': status == 'running',
+                        'ports': str(container.ports) if container.ports else ''
+                    }
             
             # Calculate overall health
             running_count = sum(1 for c in containers.values() if c.get('running', False))
@@ -181,26 +186,34 @@ class DashboardMetricsCollector:
             return {'error': str(e), 'connected': False}
     
     async def collect_rabbitmq_metrics(self) -> Dict[str, Any]:
-        """Collect RabbitMQ queue metrics"""
+        """Collect RabbitMQ queue metrics using Docker SDK"""
         try:
-            result = subprocess.run(
-                ['docker', 'exec', 'trading-rabbitmq-prod', 'rabbitmqctl', 'list_queues', 
-                 'name', 'messages', 'messages_ready', 'messages_unacknowledged'],
-                capture_output=True,
-                text=True,
-                timeout=10
+            if not self.docker_client:
+                return {'error': 'Docker client not connected'}
+            
+            # Get RabbitMQ container
+            try:
+                container = self.docker_client.containers.get('trading-rabbitmq-prod')
+            except docker.errors.NotFound:
+                return {'error': 'RabbitMQ container not found'}
+            
+            # Execute rabbitmqctl command
+            exit_code, output = container.exec_run(
+                ['rabbitmqctl', 'list_queues', 'name', 'messages', 'messages_ready', 'messages_unacknowledged'],
+                demux=False
             )
             
-            if result.returncode != 0:
-                logger.error(f"RabbitMQ command failed: {result.stderr}")
+            if exit_code != 0:
+                logger.error(f"RabbitMQ command failed with exit code {exit_code}")
                 return {'error': 'Failed to get queue stats'}
             
             queues = {}
-            lines = result.stdout.strip().split('\n')[1:]  # Skip header
+            lines = output.decode('utf-8').strip().split('\n')
             
             for line in lines:
                 parts = line.split()
-                if len(parts) >= 4:
+                # Skip header lines and ensure we have numeric data
+                if len(parts) >= 4 and parts[1].isdigit():
                     queue_name = parts[0]
                     total_msgs = int(parts[1])
                     ready = int(parts[2])
