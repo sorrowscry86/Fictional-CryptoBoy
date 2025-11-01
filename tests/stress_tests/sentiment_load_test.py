@@ -1,7 +1,7 @@
 """
 Sentiment Processing Load Test
-Tests LLM sentiment analysis with 100 concurrent articles
-Measures Ollama throughput and latency
+Tests FinBERT sentiment analysis with concurrent articles
+Measures throughput and latency for financial sentiment model
 """
 import sys
 import os
@@ -15,7 +15,7 @@ import statistics
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from llm.sentiment_analyzer import SentimentAnalyzer
+from llm.huggingface_sentiment import HuggingFaceFinancialSentiment
 from services.common.logging_config import setup_logging
 
 logger = setup_logging('sentiment-load-test')
@@ -55,23 +55,16 @@ class SentimentLoadTest:
         "DeFi explained: Decentralized Finance fundamentals"
     ]
 
-    def __init__(self, model_name: str = None, ollama_host: str = None):
+    def __init__(self, model_name: str = None):
         """
         Initialize load tester
 
         Args:
-            model_name: Ollama model name
-            ollama_host: Ollama host URL
+            model_name: FinBERT model name ('finbert', 'finbert-tone', or full HF path)
         """
-        model = model_name or os.getenv('OLLAMA_MODEL', 'mistral:7b')
-        host = ollama_host or os.getenv('OLLAMA_HOST', 'http://localhost:11434')
+        model = model_name or os.getenv('HUGGINGFACE_MODEL', 'finbert')
 
-        self.analyzer = SentimentAnalyzer(
-            model_name=model,
-            ollama_host=host,
-            timeout=60,  # Longer timeout for load testing
-            max_retries=2
-        )
+        self.analyzer = HuggingFaceFinancialSentiment(model_name=model)
 
         self.results = {
             'latencies': [],
@@ -82,14 +75,14 @@ class SentimentLoadTest:
             'end_time': None
         }
 
-        logger.info(f"Initialized sentiment load tester with model: {model}")
+        logger.info(f"Initialized sentiment load tester with FinBERT model: {model}")
 
     def setup(self):
         """Setup test environment"""
         logger.info("Setting up sentiment load test...")
         # Test connection
         try:
-            test_score = self.analyzer.get_sentiment_score("Test headline")
+            test_score = self.analyzer.analyze_sentiment("Test headline")
             logger.info(f"Connection test successful (score: {test_score})")
         except Exception as e:
             logger.error(f"Connection test failed: {e}")
@@ -109,7 +102,7 @@ class SentimentLoadTest:
         """
         start = time.time()
         try:
-            score = self.analyzer.get_sentiment_score(headline)
+            score = self.analyzer.analyze_sentiment(headline)
             latency = (time.time() - start) * 1000  # ms
 
             return {

@@ -1,0 +1,20 @@
+{
+  "summary": {
+    "total_operations": 1000,
+    "failed_operations": 0,
+    "write_operations": 1000,
+    "read_operations": 0,
+    "duration_seconds": 1.27,
+    "throughput_ops_per_sec": 790.38,
+    "success_rate": 100.0
+  },
+  "write_latency_ms": {
+    "min": 0.38,
+    "max": 21.39,
+    "mean": 1.26,
+    "median": 0.94,
+    "p95": 2.93,
+    "p99": 5.84
+  },
+  "read_latency_ms": null
+}

@@ -1,0 +1,27 @@
+{
+  "summary": {
+    "total_articles": 10,
+    "failed_articles": 0,
+    "duration_seconds": 0.22,
+    "throughput_articles_per_sec": 45.76,
+    "throughput_articles_per_min": 2745.61,
+    "success_rate": 100.0
+  },
+  "latency_ms": {
+    "min": 38.25,
+    "max": 51.29,
+    "mean": 42.38,
+    "median": 40.16,
+    "p95": 0,
+    "p99": 0
+  },
+  "sentiment_distribution": {
+    "mean_score": -0.153,
+    "median_score": -0.222,
+    "min_score": -0.938,
+    "max_score": 0.913,
+    "bullish_count": 2,
+    "bearish_count": 5,
+    "neutral_count": 3
+  }
+}
