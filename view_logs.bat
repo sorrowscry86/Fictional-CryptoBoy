@@ -56,42 +56,42 @@ goto END
 echo [*] Showing Market Data Streamer logs (live)...
 echo [*] Press Ctrl+C to exit
 echo.
-docker logs -f --tail 100 market-streamer
+docker logs -f --tail 100 trading-market-streamer
 goto END
 
 :NEWS_POLLER
 echo [*] Showing News Poller logs (live)...
 echo [*] Press Ctrl+C to exit
 echo.
-docker logs -f --tail 100 news-poller
+docker logs -f --tail 100 trading-news-poller
 goto END
 
 :SENTIMENT_PROCESSOR
 echo [*] Showing Sentiment Processor logs (live)...
 echo [*] Press Ctrl+C to exit
 echo.
-docker logs -f --tail 100 sentiment-processor
+docker logs -f --tail 100 trading-sentiment-processor
 goto END
 
 :SIGNAL_CACHER
 echo [*] Showing Signal Cacher logs (live)...
 echo [*] Press Ctrl+C to exit
 echo.
-docker logs -f --tail 100 signal-cacher
+docker logs -f --tail 100 trading-signal-cacher
 goto END
 
 :RABBITMQ
 echo [*] Showing RabbitMQ logs (live)...
 echo [*] Press Ctrl+C to exit
 echo.
-docker logs -f --tail 100 rabbitmq
+docker logs -f --tail 100 trading-rabbitmq-prod
 goto END
 
 :REDIS
 echo [*] Showing Redis logs (live)...
 echo [*] Press Ctrl+C to exit
 echo.
-docker logs -f --tail 100 redis
+docker logs -f --tail 100 trading-redis-prod
 goto END
 
 :ERRORS_ONLY
