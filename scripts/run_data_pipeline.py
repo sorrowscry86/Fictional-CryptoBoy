@@ -51,7 +51,7 @@ class DataPipeline:
         )
         
         # Configure pairs
-        self.trading_pairs = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT']
+        self.trading_pairs = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'ADA/USDT']
         
         logger.info("Data pipeline initialized")
 

@@ -37,9 +37,9 @@ RUN mkdir -p data/ohlcv_data data/news_data logs backtest/backtest_reports
 ENV PYTHONUNBUFFERED=1
 ENV LOG_LEVEL=INFO
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD python -c "import sys; sys.exit(0)"
+# Health check - verify Freqtrade API is responding
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/api/v1/ping || exit 1
 
 # Default command (can be overridden)
 CMD ["python", "-m", "freqtrade", "trade", "--config", "config/live_config.json"]

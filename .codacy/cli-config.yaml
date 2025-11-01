@@ -1,0 +1,111 @@
+# Codacy CLI Configuration
+# VoidCat RDC - CryptoBoy Trading Bot
+
+# Project identification
+project:
+  name: Fictional-CryptoBoy
+  organization: VoidCat RDC
+  owner: sorrowscry86
+
+# Analysis settings
+analysis:
+  # Enable/disable specific analysis types
+  enabled:
+    - patterns          # Code patterns and anti-patterns
+    - metrics          # Code complexity metrics
+    - duplication      # Code duplication detection
+    - coverage         # Code coverage (when available)
+  
+  # Exclude patterns (paths to ignore)
+  exclude:
+    - "**/__pycache__/**"
+    - "**/*.pyc"
+    - "**/node_modules/**"
+    - "**/user_data/**"         # Freqtrade user data
+    - "**/logs/**"              # Log files
+    - "**/data/**"              # Data files (CSV, etc.)
+    - "**/*.sqlite*"            # Database files
+    - "**/backtest_reports/**"  # Backtest outputs
+    - "**/*.md"                 # Documentation (optional - can enable for docs checks)
+    - "**/*.bat"                # Windows batch files (limited analysis value)
+    - "**/*.ps1"                # PowerShell scripts (limited analysis value)
+
+  # Include patterns (paths to analyze)
+  include:
+    - "**/*.py"                # Python source files
+    - "**/Dockerfile"          # Docker configurations
+    - "**/*.yml"               # YAML configs (docker-compose, etc.)
+    - "**/*.yaml"              # YAML configs
+    - "**/*.json"              # JSON configs
+
+# Language-specific settings
+languages:
+  python:
+    version: "3.10"
+    enabled: true
+    tools:
+      - pylint
+      - flake8
+      - bandit          # Security checks
+      - prospector
+    
+    # Python-specific exclusions
+    exclude:
+      - "setup.py"      # Ignore setup files
+      - "conftest.py"   # Ignore pytest config
+
+# Quality thresholds (optional - for CI/CD gates)
+thresholds:
+  grade: "B"           # Minimum acceptable grade
+  coverage: 0          # Minimum coverage (0% = no enforcement)
+  complexity: 15       # Maximum cyclomatic complexity per function
+  duplication: 5       # Maximum % of duplicated lines
+
+# Engine-specific configurations
+engines:
+  pylint:
+    enabled: true
+    # Disable specific pylint checks if needed
+    exclude_paths:
+      - "scripts/generate_sample_ohlcv.py"  # Sample data generator
+  
+  bandit:
+    enabled: true
+    # Security scanning - keep enabled for financial app
+  
+  flake8:
+    enabled: true
+    max_line_length: 120  # Allow 120 chars (Python default is 79)
+
+# Output settings
+output:
+  format: "json"       # json, sarif, or text
+  destination: ".codacy/results.json"
+
+# Git settings
+git:
+  # Use current branch for analysis
+  branch: "main"
+  
+  # Analyze only changed files (for PR checks)
+  # changed_files_only: true
+
+# Advanced settings
+advanced:
+  # Timeout for analysis (in seconds)
+  timeout: 600
+  
+  # Parallel analysis (number of threads)
+  parallel: 4
+  
+  # Cache analysis results
+  cache:
+    enabled: true
+    path: ".codacy/cache"
+
+# VoidCat RDC specific notes
+# This configuration prioritizes:
+# 1. Security (bandit) - critical for financial trading bot
+# 2. Code quality (pylint, flake8) - maintainability
+# 3. Duplication detection - keep codebase DRY
+# 4. Exclude data/logs/user_data - focus on source code

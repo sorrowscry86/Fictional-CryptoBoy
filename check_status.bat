@@ -36,7 +36,7 @@ echo.
 REM Check RabbitMQ queues
 echo [RABBITMQ QUEUES]
 echo.
-docker exec rabbitmq rabbitmqadmin list queues name messages 2>nul
+docker exec trading-rabbitmq-prod rabbitmqctl list_queues name messages 2>nul
 if %errorlevel% neq 0 (
     echo [WARNING] Could not connect to RabbitMQ
 )
@@ -45,8 +45,9 @@ echo.
 REM Check Redis keys
 echo [REDIS CACHE]
 echo.
-docker exec redis redis-cli dbsize 2>nul
+docker exec trading-redis-prod redis-cli DBSIZE 2>nul
 if %errorlevel% equ 0 (
+    docker exec trading-redis-prod redis-cli KEYS "sentiment:*" 2>nul
     echo [+] Redis operational
 ) else (
     echo [WARNING] Could not connect to Redis

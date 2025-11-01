@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker version:*)",
+      "Bash(docker context:*)",
+      "Bash(docker info:*)",
+      "Bash(if [ -f .env ])",
+      "Bash(then grep RABBITMQ .env)",
+      "Bash(else echo \"No .env file found\")",
+      "Bash(fi)",
+      "Bash(docker exec:*)",
+      "Bash(docker inspect:*)",
+      "Bash(docker restart:*)",
+      "Bash(docker logs:*)",
+      "Bash(docker-compose:*)",
+      "Bash(export RABBITMQ_USER=admin)",
+      "Bash(export RABBITMQ_PASS=cryptoboy_secret)",
+      "Bash(ls:*)",
+      "Bash(docker images:*)",
+      "Bash(docker ps:*)",
+      "Bash(check_status.bat)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
