@@ -168,6 +168,35 @@ services:
       retries: 3
       start_period: 120s
 
+  # Real-Time Monitoring Dashboard
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: trading-dashboard
+    command: python monitoring/dashboard_service.py
+    depends_on:
+      - redis
+      - rabbitmq
+      - trading-bot
+    volumes:
+      - ./monitoring:/app/monitoring:ro
+      - ./services/common:/app/services/common:ro
+      - ./user_data:/app/user_data:ro
+      - ./.env:/app/.env:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # Docker access for stats
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_USER=${RABBITMQ_USER:?RabbitMQ user not set}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:?RabbitMQ password not set}
+    restart: unless-stopped
+    networks:
+      - trading-network
+    ports:
+      - "8081:8081"  # Dashboard UI
+
 networks:
   trading-network:
     driver: bridge

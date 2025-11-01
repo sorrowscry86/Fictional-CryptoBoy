@@ -1,0 +1,12 @@
+# Monitoring Dashboard Dependencies
+# VoidCat RDC - CryptoBoy Trading System
+
+# Web framework
+aiohttp>=3.8.0
+
+# Redis client
+redis>=4.5.0
+
+# Standard dependencies (should already be available)
+python-dotenv>=1.0.0
+colorlog>=6.7.0
