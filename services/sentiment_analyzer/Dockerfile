@@ -7,16 +7,14 @@ RUN apt-get update && apt-get install -y \
     gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements (common)
-COPY services/requirements-common.txt /app/services/requirements-common.txt
+# Copy requirements
+COPY services/requirements.txt /app/services/requirements.txt
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r /app/services/requirements-common.txt
+RUN pip install --no-cache-dir -r /app/services/requirements.txt
 
-# Copy application code (only what this service needs)
-COPY services/__init__.py /app/services/
-COPY services/common/ /app/services/common/
-COPY services/sentiment_analyzer/ /app/services/sentiment_analyzer/
+# Copy application code
+COPY services/ /app/services/
 COPY llm/ /app/llm/
 
 # Set Python path

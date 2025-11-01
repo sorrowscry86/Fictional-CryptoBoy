@@ -244,25 +244,6 @@ class RedisClient:
             logger.error(f"Failed to lrange '{key}': {e}")
             return []
 
-    def ltrim(self, key: str, start: int, end: int) -> bool:
-        """
-        Trim a list to the specified range
-
-        Args:
-            key: List key
-            start: Start index
-            end: End index
-
-        Returns:
-            True if successful
-        """
-        try:
-            self.ensure_connection()
-            return self.client.ltrim(key, start, end)
-        except Exception as e:
-            logger.error(f"Failed to ltrim '{key}': {e}")
-            return False
-
     def expire(self, key: str, seconds: int) -> bool:
         """
         Set expiration time for a key

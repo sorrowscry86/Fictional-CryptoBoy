@@ -208,8 +208,7 @@ class RabbitMQClient:
 
 def create_consumer_callback(
     process_func: Callable[[Dict[str, Any]], None],
-    auto_ack: bool = False,
-    max_retries: int = 3
+    auto_ack: bool = False
 ) -> Callable:
     """
     Create a callback function for message consumption
@@ -217,7 +216,6 @@ def create_consumer_callback(
     Args:
         process_func: Function that processes the message data (takes Dict, returns None)
         auto_ack: Whether to automatically acknowledge messages
-        max_retries: Maximum number of requeue attempts before sending to DLQ
 
     Returns:
         Callback function compatible with pika's basic_consume
@@ -244,19 +242,8 @@ def create_consumer_callback(
 
         except Exception as e:
             logger.error(f"Error processing message: {e}", exc_info=True)
-            # Check retry count to prevent infinite poison message loops
+            # Requeue message for retry (or send to dead letter after max retries)
             if not auto_ack:
-                retry_count = 0
-                if hasattr(properties, 'headers') and properties.headers:
-                    retry_count = properties.headers.get('x-retry-count', 0)
-                
-                if retry_count < max_retries:
-                    # Requeue with incremented retry count
-                    logger.warning(f"Requeuing message (retry {retry_count + 1}/{max_retries})")
-                    ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
-                else:
-                    # Max retries exceeded - send to DLQ (don't requeue)
-                    logger.error(f"Max retries ({max_retries}) exceeded, rejecting message permanently")
-                    ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+                ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 
     return callback

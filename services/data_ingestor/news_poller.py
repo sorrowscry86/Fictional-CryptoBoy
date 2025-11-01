@@ -3,14 +3,17 @@ News Poller Service - Continuous news ingestion from RSS feeds
 Publishes new articles to RabbitMQ for sentiment analysis
 """
 import os
+import sys
 import time
 import hashlib
-from collections import deque
 from datetime import datetime
 from typing import Set, Dict, Any, List
 import feedparser
 from bs4 import BeautifulSoup
 import re
+
+# Add parent directory to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from services.common.rabbitmq_client import RabbitMQClient
 from services.common.logging_config import setup_logging
@@ -58,8 +61,8 @@ class NewsPoller:
         self.rabbitmq.connect()
         self.rabbitmq.declare_queue(self.queue_name, durable=True)
 
-        # Track published article IDs to avoid duplicates (deque with max size for automatic pruning)
-        self.published_articles: deque = deque(maxlen=10000)
+        # Track published article IDs to avoid duplicates
+        self.published_articles: Set[str] = set()
 
         # Load crypto keywords for filtering
         self.crypto_keywords = self._get_crypto_keywords()
@@ -229,8 +232,8 @@ class NewsPoller:
                             declare_queue=False
                         )
 
-                        # Track as published (deque automatically removes oldest when maxlen exceeded)
-                        self.published_articles.append(article['article_id'])
+                        # Track as published
+                        self.published_articles.add(article['article_id'])
                         total_published += 1
 
                         logger.info(
@@ -247,7 +250,13 @@ class NewsPoller:
             except Exception as e:
                 logger.error(f"Error processing feed {source_name}: {e}", exc_info=True)
 
-        # No manual pruning needed - deque automatically maintains maxlen=10000
+        # Limit cache size (keep last 10000 article IDs)
+        if len(self.published_articles) > 10000:
+            # Remove oldest 2000
+            articles_list = list(self.published_articles)
+            self.published_articles = set(articles_list[-8000:])
+            logger.info("Pruned published articles cache")
+
         return total_published
 
     def run(self):

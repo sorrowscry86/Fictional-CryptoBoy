@@ -88,6 +88,7 @@ services:
       - RABBITMQ_PORT=5672
       - RABBITMQ_USER=${RABBITMQ_USER:-cryptoboy}
       - RABBITMQ_PASS=${RABBITMQ_PASS:-cryptoboy123}
+    command: python -m services.data_ingestor.news_poller
     restart: unless-stopped
     networks:
       - trading-network

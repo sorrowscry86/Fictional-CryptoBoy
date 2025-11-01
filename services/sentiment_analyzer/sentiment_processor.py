@@ -1,16 +1,19 @@
 """
 Sentiment Processor Service - Consumes news and publishes sentiment signals
-Integrates with FinBERT (Hugging Face) for sentiment analysis
+Integrates with Ollama LLM for sentiment analysis
 """
 import os
-import re
 import sys
+import re
 from datetime import datetime
 from typing import Dict, Any, List
 
+# Add parent directories to path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+
 from services.common.rabbitmq_client import RabbitMQClient, create_consumer_callback
 from services.common.logging_config import setup_logging
-from llm.huggingface_sentiment import HuggingFaceFinancialSentiment
+from llm.sentiment_analyzer import SentimentAnalyzer
 
 logger = setup_logging('sentiment-processor')
 
@@ -25,9 +28,7 @@ class SentimentProcessor:
     TRADING_PAIRS = {
         'BTC/USDT': ['bitcoin', 'btc'],
         'ETH/USDT': ['ethereum', 'eth', 'ether'],
-        'SOL/USDT': ['solana', 'sol'],
-        'XRP/USDT': ['ripple', 'xrp'],
-        'ADA/USDT': ['cardano', 'ada'],
+        'BNB/USDT': ['binance', 'bnb', 'binance coin'],
     }
 
     # Sentiment classification thresholds
@@ -43,7 +44,8 @@ class SentimentProcessor:
         self,
         input_queue: str = 'raw_news_data',
         output_queue: str = 'sentiment_signals_queue',
-        model_name: str = None
+        model_name: str = None,
+        ollama_host: str = None
     ):
         """
         Initialize sentiment processor
@@ -51,7 +53,8 @@ class SentimentProcessor:
         Args:
             input_queue: RabbitMQ queue to consume news from
             output_queue: RabbitMQ queue to publish sentiment signals
-            model_name: FinBERT model name (defaults to 'finbert')
+            model_name: Ollama model name (defaults to env or 'mistral:7b')
+            ollama_host: Ollama host URL (defaults to env or 'http://ollama:11434')
         """
         self.input_queue = input_queue
         self.output_queue = output_queue
@@ -62,12 +65,16 @@ class SentimentProcessor:
         self.rabbitmq.declare_queue(self.input_queue, durable=True)
         self.rabbitmq.declare_queue(self.output_queue, durable=True)
 
-        # Initialize FinBERT Sentiment Analyzer
-        model = model_name or os.getenv('FINBERT_MODEL', 'finbert')
+        # Initialize Sentiment Analyzer
+        model = model_name or os.getenv('OLLAMA_MODEL', 'mistral:7b')
+        host = ollama_host or os.getenv('OLLAMA_HOST', 'http://ollama:11434')
 
-        logger.info(f"Loading FinBERT model: {model}")
-        self.analyzer = HuggingFaceFinancialSentiment(model_name=model)
-        self.model_name = f"ProsusAI/finbert"
+        self.analyzer = SentimentAnalyzer(
+            model_name=model,
+            ollama_host=host,
+            timeout=30,
+            max_retries=3
+        )
 
         # Get custom trading pairs from environment if available
         pairs_env = os.getenv('TRADING_PAIRS', '')
@@ -77,7 +84,8 @@ class SentimentProcessor:
             self.trading_pairs = self.TRADING_PAIRS
 
         logger.info(f"Initialized SentimentProcessor")
-        logger.info(f"Model: {self.model_name}")
+        logger.info(f"Model: {model}")
+        logger.info(f"Ollama host: {host}")
         logger.info(f"Tracking pairs: {', '.join(self.trading_pairs.keys())}")
 
         # Test connection
@@ -96,16 +104,16 @@ class SentimentProcessor:
         return pairs
 
     def _test_connection(self):
-        """Test FinBERT model loading"""
-        logger.info("Testing FinBERT model...")
+        """Test connection to Ollama service"""
+        logger.info("Testing connection to Ollama...")
         try:
-            test_score = self.analyzer.analyze_sentiment("Bitcoin price rises")
+            test_score = self.analyzer.get_sentiment_score("Bitcoin price rises")
             if test_score is not None:
-                logger.info(f"FinBERT test successful (test score: {test_score:+.2f})")
+                logger.info(f"Connection test successful (test score: {test_score})")
             else:
-                logger.warning("FinBERT test returned None score")
+                logger.warning("Connection test returned None score")
         except Exception as e:
-            logger.error(f"FinBERT test failed: {e}")
+            logger.error(f"Connection test failed: {e}")
             logger.warning("Will retry on first real message")
 
     def _match_article_to_pairs(self, title: str, content: str) -> List[str]:
@@ -178,10 +186,11 @@ class SentimentProcessor:
 
             logger.info(f"Processing article from {source}: {title[:60]}...")
 
-            # Perform sentiment analysis with FinBERT
-            # Combine title and content for analysis
-            analysis_text = f"{title}. {content[:500]}" if content else title
-            sentiment_score = self.analyzer.analyze_sentiment(analysis_text)
+            # Perform sentiment analysis
+            sentiment_score = self.analyzer.get_sentiment_score(
+                headline=title,
+                context=content[:500]  # First 500 chars of content as context
+            )
 
             sentiment_label = self._classify_sentiment(sentiment_score)
 
@@ -211,7 +220,7 @@ class SentimentProcessor:
                     'sentiment_label': sentiment_label,
                     'published': published,
                     'analyzed_at': datetime.utcnow().isoformat(),
-                    'model': self.model_name
+                    'model': self.analyzer.model_name
                 }
 
                 # Publish to output queue
