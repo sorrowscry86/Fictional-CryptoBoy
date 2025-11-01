@@ -1,0 +1,127 @@
+{
+  "timestamp": "2025-11-01T18:30:36.216720",
+  "tests": {
+    "test_1_market_data": {
+      "status": "FAIL",
+      "ticker_results": [
+        {
+          "pair": "BTC/USDT",
+          "success": false,
+          "error": "Network error: binance GET https://api.binance.com/api/v3/exchangeInfo",
+          "error_type": "NetworkError"
+        },
+        {
+          "pair": "ETH/USDT",
+          "success": false,
+          "error": "Network error: binance GET https://api.binance.com/api/v3/exchangeInfo",
+          "error_type": "NetworkError"
+        },
+        {
+          "pair": "SOL/USDT",
+          "success": false,
+          "error": "Network error: binance GET https://api.binance.com/api/v3/exchangeInfo",
+          "error_type": "NetworkError"
+        },
+        {
+          "pair": "XRP/USDT",
+          "success": false,
+          "error": "Network error: binance GET https://api.binance.com/api/v3/exchangeInfo",
+          "error_type": "NetworkError"
+        },
+        {
+          "pair": "ADA/USDT",
+          "success": false,
+          "error": "Network error: binance GET https://api.binance.com/api/v3/exchangeInfo",
+          "error_type": "NetworkError"
+        }
+      ],
+      "ohlcv_results": [
+        {
+          "pair": "BTC/USDT",
+          "success": false,
+          "error": "binance GET https://api.binance.com/api/v3/exchangeInfo",
+          "candles_received": 0
+        },
+        {
+          "pair": "ETH/USDT",
+          "success": false,
+          "error": "binance GET https://api.binance.com/api/v3/exchangeInfo",
+          "candles_received": 0
+        },
+        {
+          "pair": "SOL/USDT",
+          "success": false,
+          "error": "binance GET https://api.binance.com/api/v3/exchangeInfo",
+          "candles_received": 0
+        },
+        {
+          "pair": "XRP/USDT",
+          "success": false,
+          "error": "binance GET https://api.binance.com/api/v3/exchangeInfo",
+          "candles_received": 0
+        },
+        {
+          "pair": "ADA/USDT",
+          "success": false,
+          "error": "binance GET https://api.binance.com/api/v3/exchangeInfo",
+          "candles_received": 0
+        }
+      ],
+      "orderbook_results": [
+        {
+          "pair": "BTC/USDT",
+          "success": false,
+          "error": "binance GET https://api.binance.com/api/v3/exchangeInfo"
+        },
+        {
+          "pair": "ETH/USDT",
+          "success": false,
+          "error": "binance GET https://api.binance.com/api/v3/exchangeInfo"
+        },
+        {
+          "pair": "SOL/USDT",
+          "success": false,
+          "error": "binance GET https://api.binance.com/api/v3/exchangeInfo"
+        },
+        {
+          "pair": "XRP/USDT",
+          "success": false,
+          "error": "binance GET https://api.binance.com/api/v3/exchangeInfo"
+        },
+        {
+          "pair": "ADA/USDT",
+          "success": false,
+          "error": "binance GET https://api.binance.com/api/v3/exchangeInfo"
+        }
+      ],
+      "statistics": {
+        "ticker_success_rate": 0.0,
+        "ohlcv_success_rate": 0.0,
+        "orderbook_success_rate": 0.0,
+        "avg_latency_ms": 0.0,
+        "total_pairs_tested": 5
+      }
+    },
+    "test_2_websocket": {
+      "status": "SKIP",
+      "container_running": false,
+      "reason": "Container not running"
+    },
+    "test_3_database": {
+      "status": "PASS",
+      "trades_count": 0,
+      "note": "Database accessible via Docker container"
+    },
+    "test_4_services": {
+      "status": "ERROR",
+      "error": "time=\"2025-11-01T18:30:41Z\" level=warning msg=\"The \\\"BINANCE_API_KEY\\\" variable is not set. Defaulting to a blank string.\"\ntime=\"2025-11-01T18:30:41Z\" level=warning msg=\"The \\\"BINANCE_API_SECRET\\\" variable is not set. Defaulting to a blank string.\"\ntime=\"2025-11-01T18:30:41Z\" level=warning msg=\"The \\\"TELEGRAM_BOT_TOKEN\\\" variable is not set. Defaulting to a blank string.\"\ntime=\"2025-11-01T18:30:41Z\" level=warning msg=\"The \\\"TELEGRAM_CHAT_ID\\\" variable is not set. Defaulting to a blank string.\"\ntime=\"2025-11-01T18:30:41Z\" level=warning msg=\"The \\\"API_USERNAME\\\" variable is not set. Defaulting to a blank string.\"\ntime=\"2025-11-01T18:30:41Z\" level=warning msg=\"The \\\"API_PASSWORD\\\" variable is not set. Defaulting to a blank string.\"\ntime=\"2025-11-01T18:30:41Z\" level=warning msg=\"The \\\"JWT_SECRET_KEY\\\" variable is not set. Defaulting to a blank string.\"\ntime=\"2025-11-01T18:30:41Z\" level=warning msg=\"The \\\"API_USERNAME\\\" variable is not set. Defaulting to a blank string.\"\ntime=\"2025-11-01T18:30:41Z\" level=warning msg=\"The \\\"API_PASSWORD\\\" variable is not set. Defaulting to a blank string.\"\nerror while interpolating services.rabbitmq.environment.[]: required variable RABBITMQ_USER is missing a value: RabbitMQ user not set\n"
+    }
+  },
+  "overall_status": "FAILED",
+  "recommendations": [
+    "Network connectivity to cryptocurrency exchanges appears to be blocked. This is common in restricted environments. Validation will focus on configuration and system health checks.",
+    "Market data fetch rate below 80% - check exchange connectivity"
+  ],
+  "exchange_used": "None (Network Restricted)",
+  "exchange_id": null
+}
