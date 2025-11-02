@@ -2,17 +2,19 @@
 Signal Cacher Service - Caches sentiment signals in Redis
 Provides fast access to latest sentiment scores for trading strategies
 """
+
 import os
 import sys
 from datetime import datetime
-from typing import Dict, Any
+from typing import Any, Dict
+
+from services.common.logging_config import setup_logging
 
 # Add parent directories to path for imports
 from services.common.rabbitmq_client import RabbitMQClient, create_consumer_callback
 from services.common.redis_client import RedisClient
-from services.common.logging_config import setup_logging
 
-logger = setup_logging('signal-cacher')
+logger = setup_logging("signal-cacher")
 
 
 class SignalCacher:
@@ -21,11 +23,7 @@ class SignalCacher:
     and stores them in Redis for fast access by trading strategies
     """
 
-    def __init__(
-        self,
-        input_queue: str = 'sentiment_signals_queue',
-        cache_ttl: int = None
-    ):
+    def __init__(self, input_queue: str = "sentiment_signals_queue", cache_ttl: int = None):
         """
         Initialize signal cacher
 
@@ -34,7 +32,7 @@ class SignalCacher:
             cache_ttl: Time-to-live for cached signals in seconds (None = no expiry)
         """
         self.input_queue = input_queue
-        self.cache_ttl = cache_ttl or int(os.getenv('SIGNAL_CACHE_TTL', 0))  # 0 = no expiry
+        self.cache_ttl = cache_ttl or int(os.getenv("SIGNAL_CACHE_TTL", 0))  # 0 = no expiry
 
         # Initialize RabbitMQ client
         self.rabbitmq = RabbitMQClient()
@@ -45,11 +43,7 @@ class SignalCacher:
         self.redis = RedisClient()
 
         # Statistics
-        self.stats = {
-            'signals_processed': 0,
-            'cache_updates': 0,
-            'errors': 0
-        }
+        self.stats = {"signals_processed": 0, "cache_updates": 0, "errors": 0}
 
         logger.info("Initialized SignalCacher")
         logger.info(f"Input queue: {self.input_queue}")
@@ -63,20 +57,20 @@ class SignalCacher:
             signal: Sentiment signal data from RabbitMQ
         """
         try:
-            self.stats['signals_processed'] += 1
+            self.stats["signals_processed"] += 1
 
             # Extract signal data
-            pair = signal.get('pair')
-            sentiment_score = signal.get('sentiment_score')
-            sentiment_label = signal.get('sentiment_label')
-            headline = signal.get('headline', '')
-            source = signal.get('source', 'unknown')
-            analyzed_at = signal.get('analyzed_at', datetime.utcnow().isoformat())
-            article_id = signal.get('article_id', 'unknown')
+            pair = signal.get("pair")
+            sentiment_score = signal.get("sentiment_score")
+            sentiment_label = signal.get("sentiment_label")
+            headline = signal.get("headline", "")
+            source = signal.get("source", "unknown")
+            analyzed_at = signal.get("analyzed_at", datetime.utcnow().isoformat())
+            article_id = signal.get("article_id", "unknown")
 
             if not pair or sentiment_score is None:
-                logger.warning(f"Invalid signal data: missing pair or score")
-                self.stats['errors'] += 1
+                logger.warning("Invalid signal data: missing pair or score")
+                self.stats["errors"] += 1
                 return
 
             logger.debug(f"Processing signal for {pair}: {sentiment_label} ({sentiment_score:+.2f})")
@@ -85,23 +79,20 @@ class SignalCacher:
             cache_key = f"sentiment:{pair}"
 
             cache_data = {
-                'score': sentiment_score,
-                'label': sentiment_label,
-                'timestamp': analyzed_at,
-                'headline': headline[:100],  # Truncate for storage
-                'source': source,
-                'article_id': article_id
+                "score": sentiment_score,
+                "label": sentiment_label,
+                "timestamp": analyzed_at,
+                "headline": headline[:100],  # Truncate for storage
+                "source": source,
+                "article_id": article_id,
             }
 
             # Update Redis hash
             fields_set = self.redis.hset_json(cache_key, cache_data)
 
             if fields_set:
-                self.stats['cache_updates'] += 1
-                logger.info(
-                    f"Updated cache for {pair}: {sentiment_label} "
-                    f"(score: {sentiment_score:+.2f})"
-                )
+                self.stats["cache_updates"] += 1
+                logger.info(f"Updated cache for {pair}: {sentiment_label} " f"(score: {sentiment_score:+.2f})")
 
             # Set TTL if configured
             if self.cache_ttl > 0:
@@ -111,12 +102,12 @@ class SignalCacher:
             self._update_history(pair, signal)
 
             # Log statistics periodically
-            if self.stats['signals_processed'] % 50 == 0:
+            if self.stats["signals_processed"] % 50 == 0:
                 self._log_statistics()
 
         except Exception as e:
             logger.error(f"Error processing sentiment signal: {e}", exc_info=True)
-            self.stats['errors'] += 1
+            self.stats["errors"] += 1
             raise  # Re-raise to trigger message requeue
 
     def _update_history(self, pair: str, signal: Dict[str, Any]) -> None:
@@ -132,12 +123,15 @@ class SignalCacher:
 
             # Store as JSON string in list
             import json
-            history_entry = json.dumps({
-                'score': signal.get('sentiment_score'),
-                'label': signal.get('sentiment_label'),
-                'timestamp': signal.get('analyzed_at'),
-                'headline': signal.get('headline', '')[:50]
-            })
+
+            history_entry = json.dumps(
+                {
+                    "score": signal.get("sentiment_score"),
+                    "label": signal.get("sentiment_label"),
+                    "timestamp": signal.get("analyzed_at"),
+                    "headline": signal.get("headline", "")[:50],
+                }
+            )
 
             # Add to list (newest first)
             self.redis.lpush(history_key, history_entry)
@@ -164,10 +158,7 @@ class SignalCacher:
         logger.info(f"Consuming from: {self.input_queue}")
 
         # Create callback
-        callback = create_consumer_callback(
-            process_func=self._process_sentiment_signal,
-            auto_ack=False
-        )
+        callback = create_consumer_callback(process_func=self._process_sentiment_signal, auto_ack=False)
 
         try:
             # Start consuming
@@ -176,7 +167,7 @@ class SignalCacher:
                 callback=callback,
                 auto_ack=False,
                 prefetch_count=10,  # Can process multiple in parallel for caching
-                declare_queue=False
+                declare_queue=False,
             )
         except KeyboardInterrupt:
             logger.info("Keyboard interrupt received, shutting down...")
@@ -207,10 +198,7 @@ class SignalCacher:
 
 def main():
     """Main function"""
-    cacher = SignalCacher(
-        input_queue='sentiment_signals_queue',
-        cache_ttl=0  # No expiry by default
-    )
+    cacher = SignalCacher(input_queue="sentiment_signals_queue", cache_ttl=0)  # No expiry by default
 
     cacher.run()
 

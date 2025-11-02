@@ -2,20 +2,22 @@
 News Poller Service - Continuous news ingestion from RSS feeds
 Publishes new articles to RabbitMQ for sentiment analysis
 """
+
+import hashlib
 import os
+import re
 import sys
 import time
-import hashlib
 from datetime import datetime
-from typing import Set, Dict, Any, List
+from typing import Any, Dict, List, Set
+
 import feedparser
 from bs4 import BeautifulSoup
-import re
 
-from services.common.rabbitmq_client import RabbitMQClient
 from services.common.logging_config import setup_logging
+from services.common.rabbitmq_client import RabbitMQClient
 
-logger = setup_logging('news-poller')
+logger = setup_logging("news-poller")
 
 
 class NewsPoller:
@@ -25,18 +27,14 @@ class NewsPoller:
     """
 
     DEFAULT_FEEDS = {
-        'coindesk': 'https://www.coindesk.com/arc/outboundfeeds/rss/',
-        'cointelegraph': 'https://cointelegraph.com/rss',
-        'theblock': 'https://www.theblock.co/rss.xml',
-        'decrypt': 'https://decrypt.co/feed',
-        'bitcoinmagazine': 'https://bitcoinmagazine.com/.rss/full/'
+        "coindesk": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+        "cointelegraph": "https://cointelegraph.com/rss",
+        "theblock": "https://www.theblock.co/rss.xml",
+        "decrypt": "https://decrypt.co/feed",
+        "bitcoinmagazine": "https://bitcoinmagazine.com/.rss/full/",
     }
 
-    def __init__(
-        self,
-        poll_interval: int = 300,  # 5 minutes
-        queue_name: str = 'raw_news_data'
-    ):
+    def __init__(self, poll_interval: int = 300, queue_name: str = "raw_news_data"):  # 5 minutes
         """
         Initialize news poller
 
@@ -72,11 +70,37 @@ class NewsPoller:
     def _get_crypto_keywords() -> List[str]:
         """Get crypto keywords for filtering"""
         return [
-            'bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'cryptocurrency',
-            'blockchain', 'defi', 'nft', 'altcoin', 'trading', 'exchange',
-            'binance', 'coinbase', 'market', 'price', 'bull', 'bear',
-            'bnb', 'usdt', 'tether', 'ripple', 'xrp', 'cardano', 'ada',
-            'solana', 'sol', 'polkadot', 'dot', 'dogecoin', 'doge'
+            "bitcoin",
+            "btc",
+            "ethereum",
+            "eth",
+            "crypto",
+            "cryptocurrency",
+            "blockchain",
+            "defi",
+            "nft",
+            "altcoin",
+            "trading",
+            "exchange",
+            "binance",
+            "coinbase",
+            "market",
+            "price",
+            "bull",
+            "bear",
+            "bnb",
+            "usdt",
+            "tether",
+            "ripple",
+            "xrp",
+            "cardano",
+            "ada",
+            "solana",
+            "sol",
+            "polkadot",
+            "dot",
+            "dogecoin",
+            "doge",
         ]
 
     @staticmethod
@@ -93,11 +117,11 @@ class NewsPoller:
         if not html_text:
             return ""
 
-        soup = BeautifulSoup(html_text, 'html.parser')
-        text = soup.get_text(separator=' ')
+        soup = BeautifulSoup(html_text, "html.parser")
+        text = soup.get_text(separator=" ")
 
         # Remove extra whitespace
-        text = re.sub(r'\s+', ' ', text).strip()
+        text = re.sub(r"\s+", " ", text).strip()
 
         return text
 
@@ -113,7 +137,7 @@ class NewsPoller:
         Returns:
             MD5 hash as article ID
         """
-        content = f"{title}_{link}".encode('utf-8')
+        content = f"{title}_{link}".encode("utf-8")
         return hashlib.md5(content).hexdigest()
 
     def _is_crypto_relevant(self, title: str, content: str) -> bool:
@@ -153,17 +177,17 @@ class NewsPoller:
             for entry in feed.entries:
                 try:
                     # Extract publish time
-                    published = entry.get('published_parsed') or entry.get('updated_parsed')
+                    published = entry.get("published_parsed") or entry.get("updated_parsed")
                     if published:
                         pub_datetime = datetime(*published[:6])
                     else:
                         pub_datetime = datetime.utcnow()
 
                     # Extract and clean content
-                    title = entry.get('title', '')
-                    link = entry.get('link', '')
-                    summary = entry.get('summary', '')
-                    content = entry.get('content', [{}])[0].get('value', summary)
+                    title = entry.get("title", "")
+                    link = entry.get("link", "")
+                    summary = entry.get("summary", "")
+                    content = entry.get("content", [{}])[0].get("value", summary)
 
                     cleaned_content = self._clean_html(content)
                     cleaned_summary = self._clean_html(summary)
@@ -181,15 +205,15 @@ class NewsPoller:
                         continue
 
                     article = {
-                        'type': 'news_article',
-                        'article_id': article_id,
-                        'source': source_name,
-                        'title': title,
-                        'link': link,
-                        'summary': cleaned_summary[:500],  # Limit summary
-                        'content': cleaned_content[:2000],  # Limit content
-                        'published': pub_datetime.isoformat(),
-                        'fetched_at': datetime.utcnow().isoformat()
+                        "type": "news_article",
+                        "article_id": article_id,
+                        "source": source_name,
+                        "title": title,
+                        "link": link,
+                        "summary": cleaned_summary[:500],  # Limit summary
+                        "content": cleaned_content[:2000],  # Limit content
+                        "published": pub_datetime.isoformat(),
+                        "fetched_at": datetime.utcnow().isoformat(),
                     }
 
                     articles.append(article)
@@ -222,21 +246,13 @@ class NewsPoller:
                 # Publish each new article to RabbitMQ
                 for article in articles:
                     try:
-                        self.rabbitmq.publish(
-                            self.queue_name,
-                            article,
-                            persistent=True,
-                            declare_queue=False
-                        )
+                        self.rabbitmq.publish(self.queue_name, article, persistent=True, declare_queue=False)
 
                         # Track as published
-                        self.published_articles.add(article['article_id'])
+                        self.published_articles.add(article["article_id"])
                         total_published += 1
 
-                        logger.info(
-                            f"Published article from {source_name}: "
-                            f"{article['title'][:60]}..."
-                        )
+                        logger.info(f"Published article from {source_name}: " f"{article['title'][:60]}...")
 
                     except Exception as e:
                         logger.error(f"Failed to publish article: {e}")
@@ -275,8 +291,7 @@ class NewsPoller:
                     elapsed = time.time() - start_time
 
                     logger.info(
-                        f"Cycle #{cycle_count} complete: "
-                        f"{published_count} new articles published in {elapsed:.1f}s"
+                        f"Cycle #{cycle_count} complete: " f"{published_count} new articles published in {elapsed:.1f}s"
                     )
 
                 except Exception as e:
@@ -309,13 +324,10 @@ class NewsPoller:
 def main():
     """Main function"""
     # Get configuration from environment
-    poll_interval = int(os.getenv('NEWS_POLL_INTERVAL', 300))  # 5 minutes default
+    poll_interval = int(os.getenv("NEWS_POLL_INTERVAL", 300))  # 5 minutes default
 
     # Create and run poller
-    poller = NewsPoller(
-        poll_interval=poll_interval,
-        queue_name='raw_news_data'
-    )
+    poller = NewsPoller(poll_interval=poll_interval, queue_name="raw_news_data")
 
     poller.run()
 

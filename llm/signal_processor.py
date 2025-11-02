@@ -1,17 +1,15 @@
 """
 Signal Processor - Aggregates sentiment scores into trading signals
 """
-import logging
-from datetime import datetime
-from typing import Dict, List, Optional
-import pandas as pd
-import numpy as np
-from pathlib import Path
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+import logging
+from pathlib import Path
+from typing import Dict, List, Optional
+
+import numpy as np
+import pandas as pd
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -32,8 +30,8 @@ class SignalProcessor:
         self,
         df: pd.DataFrame,
         window_hours: int = 24,
-        timestamp_col: str = 'timestamp',
-        score_col: str = 'sentiment_score'
+        timestamp_col: str = "timestamp",
+        score_col: str = "sentiment_score",
     ) -> pd.DataFrame:
         """
         Calculate rolling average sentiment
@@ -60,16 +58,10 @@ class SignalProcessor:
 
         # Calculate rolling mean
         window = f"{window_hours}H"
-        df['rolling_sentiment'] = df_indexed[score_col].rolling(
-            window=window,
-            min_periods=1
-        ).mean().values
+        df["rolling_sentiment"] = df_indexed[score_col].rolling(window=window, min_periods=1).mean().values
 
         # Calculate rolling std for volatility
-        df['sentiment_volatility'] = df_indexed[score_col].rolling(
-            window=window,
-            min_periods=1
-        ).std().values
+        df["sentiment_volatility"] = df_indexed[score_col].rolling(window=window, min_periods=1).std().values
 
         logger.info(f"Calculated rolling sentiment with {window_hours}h window")
         return df
@@ -77,10 +69,10 @@ class SignalProcessor:
     def aggregate_signals(
         self,
         df: pd.DataFrame,
-        timeframe: str = '1H',
-        timestamp_col: str = 'timestamp',
-        score_col: str = 'sentiment_score',
-        aggregation_method: str = 'mean'
+        timeframe: str = "1H",
+        timestamp_col: str = "timestamp",
+        score_col: str = "sentiment_score",
+        aggregation_method: str = "mean",
     ) -> pd.DataFrame:
         """
         Aggregate sentiment signals to match trading timeframe
@@ -104,26 +96,29 @@ class SignalProcessor:
         df = df.sort_values(timestamp_col)
 
         # Resample to target timeframe
-        df_resampled = df.set_index(timestamp_col).resample(timeframe).agg({
-            score_col: aggregation_method if aggregation_method == 'mean' else 'mean',
-            'headline': 'count'  # Count articles per period
-        }).reset_index()
+        df_resampled = (
+            df.set_index(timestamp_col)
+            .resample(timeframe)
+            .agg(
+                {
+                    score_col: aggregation_method if aggregation_method == "mean" else "mean",
+                    "headline": "count",  # Count articles per period
+                }
+            )
+            .reset_index()
+        )
 
-        df_resampled.columns = [timestamp_col, 'sentiment_score', 'article_count']
+        df_resampled.columns = [timestamp_col, "sentiment_score", "article_count"]
 
         # Fill missing values with neutral sentiment
-        df_resampled['sentiment_score'] = df_resampled['sentiment_score'].fillna(0.0)
-        df_resampled['article_count'] = df_resampled['article_count'].fillna(0).astype(int)
+        df_resampled["sentiment_score"] = df_resampled["sentiment_score"].fillna(0.0)
+        df_resampled["article_count"] = df_resampled["article_count"].fillna(0).astype(int)
 
         logger.info(f"Aggregated signals to {timeframe} timeframe: {len(df_resampled)} periods")
         return df_resampled
 
     def smooth_signal_noise(
-        self,
-        df: pd.DataFrame,
-        method: str = 'ema',
-        window: int = 3,
-        score_col: str = 'sentiment_score'
+        self, df: pd.DataFrame, method: str = "ema", window: int = 3, score_col: str = "sentiment_score"
     ) -> pd.DataFrame:
         """
         Smooth sentiment signals to reduce noise
@@ -143,19 +138,20 @@ class SignalProcessor:
 
         df = df.copy()
 
-        if method == 'ema':
+        if method == "ema":
             # Exponential Moving Average
-            df['smoothed_sentiment'] = df[score_col].ewm(span=window, adjust=False).mean()
-        elif method == 'sma':
+            df["smoothed_sentiment"] = df[score_col].ewm(span=window, adjust=False).mean()
+        elif method == "sma":
             # Simple Moving Average
-            df['smoothed_sentiment'] = df[score_col].rolling(window=window, min_periods=1).mean()
-        elif method == 'gaussian':
+            df["smoothed_sentiment"] = df[score_col].rolling(window=window, min_periods=1).mean()
+        elif method == "gaussian":
             # Gaussian smoothing
             from scipy.ndimage import gaussian_filter1d
-            df['smoothed_sentiment'] = gaussian_filter1d(df[score_col].values, sigma=window)
+
+            df["smoothed_sentiment"] = gaussian_filter1d(df[score_col].values, sigma=window)
         else:
             logger.warning(f"Unknown smoothing method: {method}")
-            df['smoothed_sentiment'] = df[score_col]
+            df["smoothed_sentiment"] = df[score_col]
 
         logger.info(f"Applied {method} smoothing with window={window}")
         return df
@@ -163,9 +159,9 @@ class SignalProcessor:
     def create_trading_signals(
         self,
         df: pd.DataFrame,
-        score_col: str = 'sentiment_score',
+        score_col: str = "sentiment_score",
         bullish_threshold: float = 0.3,
-        bearish_threshold: float = -0.3
+        bearish_threshold: float = -0.3,
     ) -> pd.DataFrame:
         """
         Create binary trading signals from sentiment scores
@@ -186,18 +182,18 @@ class SignalProcessor:
         df = df.copy()
 
         # Create signal column
-        df['signal'] = 0  # Neutral
+        df["signal"] = 0  # Neutral
 
-        df.loc[df[score_col] >= bullish_threshold, 'signal'] = 1  # Buy
-        df.loc[df[score_col] <= bearish_threshold, 'signal'] = -1  # Sell
+        df.loc[df[score_col] >= bullish_threshold, "signal"] = 1  # Buy
+        df.loc[df[score_col] <= bearish_threshold, "signal"] = -1  # Sell
 
         # Calculate signal strength (distance from threshold)
-        df['signal_strength'] = df[score_col].abs()
+        df["signal_strength"] = df[score_col].abs()
 
         # Count signals
-        buy_signals = (df['signal'] == 1).sum()
-        sell_signals = (df['signal'] == -1).sum()
-        neutral = (df['signal'] == 0).sum()
+        buy_signals = (df["signal"] == 1).sum()
+        sell_signals = (df["signal"] == -1).sum()
+        neutral = (df["signal"] == 0).sum()
 
         logger.info(f"Created signals - Buy: {buy_signals}, Sell: {sell_signals}, Neutral: {neutral}")
         return df
@@ -206,9 +202,9 @@ class SignalProcessor:
         self,
         sentiment_df: pd.DataFrame,
         market_df: pd.DataFrame,
-        sentiment_timestamp_col: str = 'timestamp',
-        market_timestamp_col: str = 'timestamp',
-        tolerance_hours: int = 1
+        sentiment_timestamp_col: str = "timestamp",
+        market_timestamp_col: str = "timestamp",
+        tolerance_hours: int = 1,
     ) -> pd.DataFrame:
         """
         Merge sentiment data with market OHLCV data
@@ -244,13 +240,13 @@ class SignalProcessor:
             sentiment_df,
             left_on=market_timestamp_col,
             right_on=sentiment_timestamp_col,
-            direction='backward',
-            tolerance=pd.Timedelta(hours=tolerance_hours)
+            direction="backward",
+            tolerance=pd.Timedelta(hours=tolerance_hours),
         )
 
         # Fill missing sentiment scores with neutral
-        if 'sentiment_score' in merged_df.columns:
-            merged_df['sentiment_score'] = merged_df['sentiment_score'].fillna(0.0)
+        if "sentiment_score" in merged_df.columns:
+            merged_df["sentiment_score"] = merged_df["sentiment_score"].fillna(0.0)
 
         # Remove rows where sentiment data is from the future (safety check)
         if sentiment_timestamp_col in merged_df.columns and market_timestamp_col in merged_df.columns:
@@ -263,10 +259,7 @@ class SignalProcessor:
         return merged_df
 
     def export_signals_csv(
-        self,
-        df: pd.DataFrame,
-        filename: str = 'sentiment_signals.csv',
-        columns: Optional[List[str]] = None
+        self, df: pd.DataFrame, filename: str = "sentiment_signals.csv", columns: Optional[List[str]] = None
     ):
         """
         Export processed signals to CSV
@@ -304,30 +297,30 @@ class SignalProcessor:
             return {}
 
         summary = {
-            'total_periods': len(df),
-            'date_range': {
-                'start': str(df['timestamp'].min()) if 'timestamp' in df.columns else None,
-                'end': str(df['timestamp'].max()) if 'timestamp' in df.columns else None
-            }
+            "total_periods": len(df),
+            "date_range": {
+                "start": str(df["timestamp"].min()) if "timestamp" in df.columns else None,
+                "end": str(df["timestamp"].max()) if "timestamp" in df.columns else None,
+            },
         }
 
-        if 'sentiment_score' in df.columns:
-            summary['sentiment_stats'] = {
-                'mean': float(df['sentiment_score'].mean()),
-                'median': float(df['sentiment_score'].median()),
-                'std': float(df['sentiment_score'].std()),
-                'min': float(df['sentiment_score'].min()),
-                'max': float(df['sentiment_score'].max()),
-                'positive_periods': int((df['sentiment_score'] > 0).sum()),
-                'negative_periods': int((df['sentiment_score'] < 0).sum()),
-                'neutral_periods': int((df['sentiment_score'] == 0).sum())
+        if "sentiment_score" in df.columns:
+            summary["sentiment_stats"] = {
+                "mean": float(df["sentiment_score"].mean()),
+                "median": float(df["sentiment_score"].median()),
+                "std": float(df["sentiment_score"].std()),
+                "min": float(df["sentiment_score"].min()),
+                "max": float(df["sentiment_score"].max()),
+                "positive_periods": int((df["sentiment_score"] > 0).sum()),
+                "negative_periods": int((df["sentiment_score"] < 0).sum()),
+                "neutral_periods": int((df["sentiment_score"] == 0).sum()),
             }
 
-        if 'signal' in df.columns:
-            summary['signal_stats'] = {
-                'buy_signals': int((df['signal'] == 1).sum()),
-                'sell_signals': int((df['signal'] == -1).sum()),
-                'neutral_signals': int((df['signal'] == 0).sum())
+        if "signal" in df.columns:
+            summary["signal_stats"] = {
+                "buy_signals": int((df["signal"] == 1).sum()),
+                "sell_signals": int((df["signal"] == -1).sum()),
+                "neutral_signals": int((df["signal"] == 0).sum()),
             }
 
         return summary
@@ -338,12 +331,14 @@ if __name__ == "__main__":
     processor = SignalProcessor()
 
     # Create sample sentiment data
-    dates = pd.date_range(start='2024-01-01', end='2024-01-31', freq='1H')
-    sample_sentiment_df = pd.DataFrame({
-        'timestamp': dates,
-        'sentiment_score': np.random.uniform(-0.5, 0.5, len(dates)),
-        'headline': ['Sample headline'] * len(dates)
-    })
+    dates = pd.date_range(start="2024-01-01", end="2024-01-31", freq="1H")
+    sample_sentiment_df = pd.DataFrame(
+        {
+            "timestamp": dates,
+            "sentiment_score": np.random.uniform(-0.5, 0.5, len(dates)),
+            "headline": ["Sample headline"] * len(dates),
+        }
+    )
 
     # Calculate rolling sentiment
     df_with_rolling = processor.calculate_rolling_sentiment(sample_sentiment_df, window_hours=24)
@@ -352,7 +347,7 @@ if __name__ == "__main__":
     # Create trading signals
     df_with_signals = processor.create_trading_signals(df_with_rolling, bullish_threshold=0.2)
     print("\nSignal distribution:")
-    print(df_with_signals['signal'].value_counts())
+    print(df_with_signals["signal"].value_counts())
 
     # Generate summary
     summary = processor.generate_signal_summary(df_with_signals)

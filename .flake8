@@ -1,0 +1,35 @@
+# Flake8 Configuration
+# VoidCat RDC - CryptoBoy Trading Bot
+
+[flake8]
+# Maximum line length
+max-line-length = 120
+
+# Exclude directories
+exclude =
+    .git,
+    __pycache__,
+    .venv,
+    venv,
+    user_data,
+    logs,
+    data,
+    backtest_reports,
+    *.egg-info,
+    build,
+    dist
+
+# Ignore specific errors
+extend-ignore = E501,W503
+
+# Show source code for each error
+show-source = True
+
+# Show pep8 error code
+show-pep8 = True
+
+# Count errors
+count = True
+
+# Produce a report
+statistics = True

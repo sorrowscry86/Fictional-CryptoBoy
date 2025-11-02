@@ -1,16 +1,15 @@
 """
 LLM Model Manager - Manages Ollama models for sentiment analysis
 """
-import os
-import logging
-import requests
-from typing import Dict, List, Optional
-import json
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+import json
+import logging
+import os
+from typing import Dict, List, Optional
+
+import requests
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -19,10 +18,10 @@ class ModelManager:
 
     # Recommended models for financial sentiment analysis
     RECOMMENDED_MODELS = [
-        'mistral:7b',           # General purpose, good for sentiment
-        'llama2:7b',            # Alternative general purpose
-        'neural-chat:7b',       # Fine-tuned for chat/analysis
-        'orca-mini:7b',         # Smaller, faster
+        "mistral:7b",  # General purpose, good for sentiment
+        "llama2:7b",  # Alternative general purpose
+        "neural-chat:7b",  # Fine-tuned for chat/analysis
+        "orca-mini:7b",  # Smaller, faster
     ]
 
     def __init__(self, ollama_host: str = "http://localhost:11434"):
@@ -32,7 +31,7 @@ class ModelManager:
         Args:
             ollama_host: URL of the Ollama API
         """
-        self.ollama_host = ollama_host.rstrip('/')
+        self.ollama_host = ollama_host.rstrip("/")
         self.api_url = f"{self.ollama_host}/api"
 
         logger.info(f"Initialized ModelManager with host: {self.ollama_host}")
@@ -68,7 +67,7 @@ class ModelManager:
             response.raise_for_status()
 
             data = response.json()
-            models = data.get('models', [])
+            models = data.get("models", [])
 
             logger.info(f"Found {len(models)} models")
             return models
@@ -89,7 +88,7 @@ class ModelManager:
         """
         models = self.list_models()
         for model in models:
-            if model.get('name') == model_name:
+            if model.get("name") == model_name:
                 return True
         return False
 
@@ -111,12 +110,7 @@ class ModelManager:
         logger.info(f"Pulling model {model_name}... This may take several minutes")
 
         try:
-            response = requests.post(
-                f"{self.api_url}/pull",
-                json={"name": model_name},
-                stream=True,
-                timeout=timeout
-            )
+            response = requests.post(f"{self.api_url}/pull", json={"name": model_name}, stream=True, timeout=timeout)
             response.raise_for_status()
 
             # Stream the response to show progress
@@ -124,9 +118,9 @@ class ModelManager:
                 if line:
                     try:
                         data = json.loads(line)
-                        status = data.get('status', '')
-                        if 'total' in data and 'completed' in data:
-                            progress = (data['completed'] / data['total']) * 100
+                        status = data.get("status", "")
+                        if "total" in data and "completed" in data:
+                            progress = (data["completed"] / data["total"]) * 100
                             logger.info(f"Progress: {progress:.1f}% - {status}")
                         else:
                             logger.info(f"Status: {status}")
@@ -156,17 +150,13 @@ class ModelManager:
 
             response = requests.post(
                 f"{self.api_url}/generate",
-                json={
-                    "model": model_name,
-                    "prompt": test_prompt,
-                    "stream": False
-                },
-                timeout=30
+                json={"model": model_name, "prompt": test_prompt, "stream": False},
+                timeout=30,
             )
             response.raise_for_status()
 
             data = response.json()
-            if 'response' in data and data['response']:
+            if "response" in data and data["response"]:
                 logger.info(f"Model {model_name} is working correctly")
                 logger.debug(f"Test response: {data['response'][:100]}")
                 return True
@@ -189,11 +179,7 @@ class ModelManager:
             Dictionary with model information
         """
         try:
-            response = requests.post(
-                f"{self.api_url}/show",
-                json={"name": model_name},
-                timeout=10
-            )
+            response = requests.post(f"{self.api_url}/show", json={"name": model_name}, timeout=10)
             response.raise_for_status()
 
             return response.json()
@@ -203,9 +189,7 @@ class ModelManager:
             return None
 
     def ensure_model_available(
-        self,
-        model_name: Optional[str] = None,
-        fallback_models: Optional[List[str]] = None
+        self, model_name: Optional[str] = None, fallback_models: Optional[List[str]] = None
     ) -> Optional[str]:
         """
         Ensure a model is available, with fallback options
@@ -263,11 +247,7 @@ class ModelManager:
             True if successful
         """
         try:
-            response = requests.delete(
-                f"{self.api_url}/delete",
-                json={"name": model_name},
-                timeout=30
-            )
+            response = requests.delete(f"{self.api_url}/delete", json={"name": model_name}, timeout=30)
             response.raise_for_status()
 
             logger.info(f"Successfully deleted model {model_name}")
@@ -280,9 +260,10 @@ class ModelManager:
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
+
     load_dotenv()
 
-    ollama_host = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
+    ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
     manager = ModelManager(ollama_host)
 
     # Check connectivity
@@ -294,7 +275,7 @@ if __name__ == "__main__":
             print(f"  - {model.get('name')} ({model.get('size', 0) / 1e9:.2f} GB)")
 
         # Ensure a model is available
-        model_name = os.getenv('OLLAMA_MODEL', 'mistral:7b')
+        model_name = os.getenv("OLLAMA_MODEL", "mistral:7b")
         available_model = manager.ensure_model_available(model_name)
 
         if available_model:
