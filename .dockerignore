@@ -1,0 +1,106 @@
+# VoidCat RDC - CryptoBoy .dockerignore
+# Exclude unnecessary files from Docker builds to speed up build context transfer
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Git
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.DS_Store
+
+# Documentation (not needed in container)
+*.md
+docs/
+.specstory/
+.codacy/
+.claude/
+.zencoder/
+
+# Data files (mounted as volumes)
+data/ohlcv_data/
+data/news_data/
+logs/
+user_data/
+*.sqlite
+*.db
+*.bak
+
+# Test files
+tests/
+pytest_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+.coveragerc
+*.cover
+.hypothesis/
+
+# Backtest reports
+backtest/backtest_reports/
+
+# Build artifacts
+*.tar.gz
+*.zip
+
+# Batch files (Windows only)
+*.bat
+*.ps1
+
+# Config examples
+.env.example
+
+# Temporary files
+*.tmp
+*.temp
+tmp/
+monitor_output.txt
+
+# Reports and validation files
+*_REPORT.md
+*_SUMMARY.md
+*_RESULTS.md
+*_STATUS.md
+*.json.bak
+repomix-output.xml
+CryptoBoy_RDC.xml
+coinbase_validation_results.json
+*_report.json
+
+# Pre-commit
+.pre-commit-config.yaml
+.pre-commit-hooks.yaml
+
+# Linting configs (not needed at runtime)
+.flake8
+.pylintrc
+pyproject.toml
+Makefile
+
+# Docker files (don't copy docker files into docker)
+docker-compose*.yml
+Dockerfile*
+.dockerignore

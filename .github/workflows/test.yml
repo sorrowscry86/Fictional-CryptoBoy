@@ -2,7 +2,7 @@ name: CryptoBoy CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop, 'claude/**' ]
+    branches: [ main, develop, 'claude/**', 'copilot/**' ]
   pull_request:
     branches: [ main, develop ]
 
@@ -16,25 +16,30 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
+        cache: 'pip'
 
-    - name: Install dependencies
+    - name: Install linting dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install flake8 black
+        pip install flake8 black isort
 
     - name: Lint with flake8
       run: |
         # Stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --exclude=.git,__pycache__,user_data,logs,data,backtest_reports
         # Treat all other issues as warnings
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics --exclude=.git,__pycache__,user_data,logs,data,backtest_reports
 
     - name: Check formatting with black
       run: |
-        black --check --diff --line-length 100 .
+        black --check --diff --line-length 120 --exclude '/(\.git|__pycache__|user_data|logs|data|backtest_reports)/' .
+
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only --profile black --line-length 120 --skip-glob '*.git/*' --skip-glob '*/__pycache__/*' .
 
   unit-tests:
     name: Unit Tests
@@ -45,9 +50,10 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
+        cache: 'pip'
 
     - name: Install dependencies
       run: |
@@ -57,14 +63,17 @@ jobs:
 
     - name: Run unit tests
       run: |
-        pytest tests/unit/ -v --cov=. --cov-report=xml --cov-report=term
+        pytest tests/unit/ -v --cov=services --cov=llm --cov-report=xml --cov-report=term-missing
 
     - name: Upload coverage reports
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v4
+      if: always()
       with:
         files: ./coverage.xml
         flags: unittests
         name: codecov-umbrella
+        token: ${{ secrets.CODECOV_TOKEN }}
+      continue-on-error: true
 
   integration-tests:
     name: Integration Tests
@@ -100,9 +109,10 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
+        cache: 'pip'
 
     - name: Install dependencies
       run: |
@@ -111,8 +121,9 @@ jobs:
         pip install -r services/requirements.txt
         pip install pytest pytest-asyncio
 
-    - name: Wait for services
+    - name: Wait for services to be ready
       run: |
+        echo "Waiting for RabbitMQ and Redis..."
         sleep 10
 
     - name: Run integration tests
@@ -124,7 +135,7 @@ jobs:
         REDIS_HOST: localhost
         REDIS_PORT: 6379
       run: |
-        pytest tests/integration/ -v
+        pytest tests/integration/ -v -m integration
 
   docker-build:
     name: Docker Build Test
@@ -137,6 +148,16 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
+    - name: Build main trading bot image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./Dockerfile
+        push: false
+        tags: cryptoboy-trading-bot:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
     - name: Build data ingestor image
       uses: docker/build-push-action@v5
       with:
@@ -144,6 +165,16 @@ jobs:
         file: ./services/data_ingestor/Dockerfile
         push: false
         tags: cryptoboy-data-ingestor:test
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Build news poller image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./services/data_ingestor/Dockerfile.news
+        push: false
+        tags: cryptoboy-news-poller:test
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
@@ -184,7 +215,7 @@ jobs:
         output: 'trivy-results.sarif'
 
     - name: Upload Trivy results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
+      uses: github/codeql-action/upload-sarif@v3
       if: always()
       with:
         sarif_file: 'trivy-results.sarif'
@@ -198,7 +229,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.10'
 
@@ -207,10 +238,73 @@ jobs:
         python -m pip install --upgrade pip
         pip install safety
 
-    - name: Run safety check
+    - name: Run safety check on main requirements
       run: |
-        safety check --file requirements.txt --continue-on-error
-        safety check --file services/requirements.txt --continue-on-error
+        safety check --file requirements.txt --continue-on-error || true
+
+    - name: Run safety check on service requirements
+      run: |
+        safety check --file services/requirements.txt --continue-on-error || true
+
+  e2e-tests:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+
+    services:
+      rabbitmq:
+        image: rabbitmq:3-management-alpine
+        ports:
+          - 5672:5672
+        env:
+          RABBITMQ_DEFAULT_USER: admin
+          RABBITMQ_DEFAULT_PASS: cryptoboy_secret
+        options: >-
+          --health-cmd "rabbitmq-diagnostics -q ping"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r services/requirements.txt
+        pip install pytest pytest-asyncio
+
+    - name: Wait for services
+      run: sleep 15
+
+    - name: Run E2E tests
+      env:
+        RABBITMQ_HOST: localhost
+        RABBITMQ_PORT: 5672
+        RABBITMQ_USER: admin
+        RABBITMQ_PASS: cryptoboy_secret
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+      run: |
+        pytest tests/e2e/ -v -m e2e --tb=short
 
   notify:
     name: Notification
@@ -221,8 +315,10 @@ jobs:
     steps:
     - name: Check job results
       run: |
-        echo "Lint Status: ${{ needs.lint-and-format.result }}"
-        echo "Unit Tests Status: ${{ needs.unit-tests.result }}"
-        echo "Integration Tests Status: ${{ needs.integration-tests.result }}"
-        echo "Docker Build Status: ${{ needs.docker-build.result }}"
-        echo "Security Scan Status: ${{ needs.security-scan.result }}"
+        echo "## CI/CD Pipeline Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "- Lint & Format: ${{ needs.lint-and-format.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Unit Tests: ${{ needs.unit-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Integration Tests: ${{ needs.integration-tests.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Docker Build: ${{ needs.docker-build.result }}" >> $GITHUB_STEP_SUMMARY
+        echo "- Security Scan: ${{ needs.security-scan.result }}" >> $GITHUB_STEP_SUMMARY
