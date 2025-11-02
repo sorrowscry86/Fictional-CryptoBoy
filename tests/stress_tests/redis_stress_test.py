@@ -190,7 +190,7 @@ class RedisStressTest:
             pairs = self.TRADING_PAIRS
 
         logger.info(
-            f"Starting parallel updates test: {iterations} operations, " f"{workers} workers, {len(pairs)} pairs"
+            f"Starting parallel updates test: {iterations} operations, {workers} workers, {len(pairs)} pairs"
         )
         self.results["start_time"] = time.time()
 

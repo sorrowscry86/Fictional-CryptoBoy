@@ -217,7 +217,7 @@ class SentimentProcessor:
                 # Publish to output queue
                 self.rabbitmq.publish(self.output_queue, signal, persistent=True, declare_queue=False)
 
-                logger.info(f"Published signal for {pair}: {sentiment_label} " f"(score: {sentiment_score:+.2f})")
+                logger.info(f"Published signal for {pair}: {sentiment_label} (score: {sentiment_score:+.2f})")
 
         except Exception as e:
             logger.error(f"Error processing news article: {e}", exc_info=True)

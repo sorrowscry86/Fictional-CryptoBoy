@@ -144,7 +144,7 @@ class SentimentLoadTest:
 
             if (i + 1) % 10 == 0:
                 avg_latency = statistics.mean(self.results["latencies"][-10:])
-                logger.info(f"Progress: {i+1}/{num_articles}, " f"avg latency (last 10): {avg_latency:.0f}ms")
+                logger.info(f"Progress: {i+1}/{num_articles}, avg latency (last 10): {avg_latency:.0f}ms")
 
         self.results["end_time"] = time.time()
         logger.info(
