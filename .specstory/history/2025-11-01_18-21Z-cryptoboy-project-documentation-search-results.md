@@ -1924,9 +1924,25 @@ The repository is now clean with all changes synchronized to `origin/main`. All 
 
 ---
 
-_**User (2025-11-02 02:09Z)**_
+_**User (2025-11-02 02:12Z)**_
 
 rebuild updated system
+
+---
+
+_**Agent (model copilot/auto)**_
+
+The build failed because `ccxt.pro` (the professional/async version) requires a paid subscription and isn't publicly available. I'll fix the requirements to use the standard `ccxt` library instead. 
+```
+
+```
+
+
+---
+
+_**User (2025-11-02 02:12Z)**_
+
+merge branches
 
 ---
 
