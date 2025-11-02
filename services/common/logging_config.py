@@ -5,7 +5,6 @@ Provides consistent logging setup across all services
 import os
 import logging
 import sys
-from typing import Optional
 
 
 def setup_logging(

@@ -5,7 +5,7 @@ import os
 import time
 import logging
 from datetime import datetime, timedelta
-from typing import Optional, List, Dict
+from typing import Optional, Dict
 import pandas as pd
 import ccxt
 from pathlib import Path
@@ -286,11 +286,11 @@ class MarketDataCollector:
 
         # Check price consistency (high >= low, etc.)
         invalid_prices = (
-            (df['high'] < df['low']) |
-            (df['high'] < df['open']) |
-            (df['high'] < df['close']) |
-            (df['low'] > df['open']) |
-            (df['low'] > df['close'])
+            (df['high'] < df['low'])
+            | (df['high'] < df['open'])
+            | (df['high'] < df['close'])
+            | (df['low'] > df['open'])
+            | (df['low'] > df['close'])
         )
         if invalid_prices.any():
             logger.error(f"Found {invalid_prices.sum()} rows with invalid price relationships")

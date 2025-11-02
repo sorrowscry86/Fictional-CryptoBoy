@@ -288,7 +288,10 @@ class TelegramNotifier:
             logger.warning("Telegram is not enabled")
             return False
 
-        test_message = "🧪 Testing Telegram connection...\n\nIf you receive this message, the bot is configured correctly!"
+        test_message = (
+            "🧪 Testing Telegram connection...\n\n"
+            "If you receive this message, the bot is configured correctly!"
+        )
 
         if self.send_message(test_message):
             logger.info("Telegram connection test successful")

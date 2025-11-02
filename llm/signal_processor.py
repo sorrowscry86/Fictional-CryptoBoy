@@ -2,7 +2,7 @@
 Signal Processor - Aggregates sentiment scores into trading signals
 """
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, List, Optional
 import pandas as pd
 import numpy as np
@@ -351,11 +351,11 @@ if __name__ == "__main__":
 
     # Create trading signals
     df_with_signals = processor.create_trading_signals(df_with_rolling, bullish_threshold=0.2)
-    print(f"\nSignal distribution:")
+    print("\nSignal distribution:")
     print(df_with_signals['signal'].value_counts())
 
     # Generate summary
     summary = processor.generate_signal_summary(df_with_signals)
-    print(f"\nSignal summary:")
+    print("\nSignal summary:")
     for key, value in summary.items():
         print(f"  {key}: {value}")

@@ -8,12 +8,10 @@ for crypto/stock sentiment analysis compared to general-purpose LLMs.
 
 Recommended Models:
 1. ProsusAI/finbert - 2.4M downloads, 997 likes (BEST OVERALL)
-2. yiyanghkust/finbert-tone - 906K downloads, 203 likes  
+2. yiyanghkust/finbert-tone - 906K downloads, 203 likes
 3. mrm8488/distilroberta-finetuned-financial-news-sentiment-analysis - 506K downloads, 420 likes (FASTEST)
 """
 
-import os
-from typing import Optional, Dict
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 import torch
 from dotenv import load_dotenv

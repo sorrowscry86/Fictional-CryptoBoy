@@ -9,8 +9,6 @@ from datetime import datetime
 from typing import Dict, Any, List
 
 # Add parent directories to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
 from services.common.rabbitmq_client import RabbitMQClient, create_consumer_callback
 from services.common.logging_config import setup_logging
 from llm.sentiment_analyzer import SentimentAnalyzer
@@ -83,7 +81,7 @@ class SentimentProcessor:
         else:
             self.trading_pairs = self.TRADING_PAIRS
 
-        logger.info(f"Initialized SentimentProcessor")
+        logger.info("Initialized SentimentProcessor")
         logger.info(f"Model: {model}")
         logger.info(f"Ollama host: {host}")
         logger.info(f"Tracking pairs: {', '.join(self.trading_pairs.keys())}")
@@ -203,7 +201,7 @@ class SentimentProcessor:
             matched_pairs = self._match_article_to_pairs(title, content)
 
             if not matched_pairs:
-                logger.debug(f"Article not relevant to any trading pairs, skipping")
+                logger.debug("Article not relevant to any trading pairs, skipping")
                 return
 
             logger.info(f"Article matched to pairs: {', '.join(matched_pairs)}")

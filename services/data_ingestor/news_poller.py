@@ -12,9 +12,6 @@ import feedparser
 from bs4 import BeautifulSoup
 import re
 
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
 from services.common.rabbitmq_client import RabbitMQClient
 from services.common.logging_config import setup_logging
 

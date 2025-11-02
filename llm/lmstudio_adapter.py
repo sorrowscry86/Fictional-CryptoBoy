@@ -8,8 +8,7 @@ for sentiment analysis operations.
 
 import os
 import requests
-import json
-from typing import Dict, Optional
+from typing import Optional
 from dotenv import load_dotenv
 
 load_dotenv()

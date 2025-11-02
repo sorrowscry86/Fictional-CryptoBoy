@@ -8,8 +8,6 @@ from datetime import datetime
 from typing import Dict, Any
 
 # Add parent directories to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-
 from services.common.rabbitmq_client import RabbitMQClient, create_consumer_callback
 from services.common.redis_client import RedisClient
 from services.common.logging_config import setup_logging
@@ -53,7 +51,7 @@ class SignalCacher:
             'errors': 0
         }
 
-        logger.info(f"Initialized SignalCacher")
+        logger.info("Initialized SignalCacher")
         logger.info(f"Input queue: {self.input_queue}")
         logger.info(f"Cache TTL: {self.cache_ttl}s (0 = no expiry)")
 

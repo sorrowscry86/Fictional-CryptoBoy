@@ -2,8 +2,8 @@
 Data Validation Module - Ensures data quality and prevents look-ahead bias
 """
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from datetime import datetime
+from typing import Dict, Optional
 import pandas as pd
 import numpy as np
 from pathlib import Path
@@ -81,10 +81,10 @@ class DataValidator:
             results['errors'].append(f"High < Low in {invalid_high} rows")
 
         invalid_range = (
-            (df['high'] < df['open']) |
-            (df['high'] < df['close']) |
-            (df['low'] > df['open']) |
-            (df['low'] > df['close'])
+            (df['high'] < df['open'])
+            | (df['high'] < df['close'])
+            | (df['low'] > df['open'])
+            | (df['low'] > df['close'])
         ).sum()
         if invalid_range > 0:
             results['valid'] = False

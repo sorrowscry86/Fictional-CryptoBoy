@@ -8,7 +8,7 @@ import json
 import logging
 from typing import Callable, Dict, Any, Optional
 import pika
-from pika.exceptions import AMQPConnectionError, ChannelClosedByBroker
+from pika.exceptions import AMQPConnectionError
 
 logger = logging.getLogger(__name__)
 

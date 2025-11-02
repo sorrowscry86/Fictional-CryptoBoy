@@ -5,13 +5,9 @@ Publishes OHLCV candles to RabbitMQ for downstream processing
 import os
 import sys
 import asyncio
-import json
 from datetime import datetime
 from typing import List, Dict, Any
 import ccxt.pro as ccxtpro
-
-# Add parent directory to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
 from services.common.rabbitmq_client import RabbitMQClient
 from services.common.logging_config import setup_logging

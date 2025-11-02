@@ -4,13 +4,11 @@ Combines technical indicators with LLM-based sentiment analysis
 """
 import logging
 import os
-from datetime import datetime, timedelta
-from pathlib import Path
+from datetime import datetime
 from typing import Optional
 import pandas as pd
-import numpy as np
 from pandas import DataFrame
-from freqtrade.strategy import IStrategy, informative
+from freqtrade.strategy import IStrategy
 import talib.abstract as ta
 from freqtrade.persistence import Trade
 import redis
@@ -221,25 +219,16 @@ class LLMSentimentStrategy(IStrategy):
         dataframe.loc[
             (
                 # Sentiment is strongly positive
-                (dataframe['sentiment'] > self.sentiment_buy_threshold) &
-
-                # Technical confirmation: upward momentum
-                (dataframe['ema_short'] > dataframe['ema_long']) &
-
-                # RSI not overbought
-                (dataframe['rsi'] < self.rsi_sell_threshold) &
-                (dataframe['rsi'] > self.rsi_buy_threshold) &
-
-                # MACD bullish
-                (dataframe['macd'] > dataframe['macdsignal']) &
-
-                # Volume above average
-                (dataframe['volume'] > dataframe['volume_mean']) &
-
-                # Safety: not at upper Bollinger Band
-                (dataframe['close'] < dataframe['bb_upper'])
+                (dataframe['sentiment'] > self.sentiment_buy_threshold)
+                & (dataframe['ema_short'] > dataframe['ema_long'])  # Technical confirmation: upward momentum
+                & (dataframe['rsi'] < self.rsi_sell_threshold)
+                & (dataframe['rsi'] > self.rsi_buy_threshold)  # RSI not overbought
+                & (dataframe['macd'] > dataframe['macdsignal'])  # MACD bullish
+                & (dataframe['volume'] > dataframe['volume_mean'])  # Volume above average
+                & (dataframe['close'] < dataframe['bb_upper'])  # Safety: not at upper Bollinger Band
             ),
-            'enter_long'] = 1
+            'enter_long'
+        ] = 1
 
         return dataframe
 
@@ -256,21 +245,18 @@ class LLMSentimentStrategy(IStrategy):
         """
         dataframe.loc[
             (
-                # Sentiment turns negative
+                # Sentiment turns negative OR technical signals show weakness OR MACD turns bearish
                 (
-                    (dataframe['sentiment'] < self.sentiment_sell_threshold) |
-
-                    # OR technical signals show weakness
-                    (
-                        (dataframe['ema_short'] < dataframe['ema_long']) &
-                        (dataframe['rsi'] > self.rsi_sell_threshold)
-                    ) |
-
-                    # OR MACD turns bearish
-                    (dataframe['macd'] < dataframe['macdsignal'])
+                    (dataframe['sentiment'] < self.sentiment_sell_threshold)
+                    | (
+                        (dataframe['ema_short'] < dataframe['ema_long'])
+                        & (dataframe['rsi'] > self.rsi_sell_threshold)
+                    )
+                    | (dataframe['macd'] < dataframe['macdsignal'])
                 )
             ),
-            'exit_long'] = 1
+            'exit_long'
+        ] = 1
 
         return dataframe
 

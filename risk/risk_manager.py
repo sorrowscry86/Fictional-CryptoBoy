@@ -2,9 +2,8 @@
 Risk Management Framework - Controls trading risk
 """
 import logging
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-import pandas as pd
+from datetime import datetime
+from typing import Dict, Optional
 import json
 from pathlib import Path
 

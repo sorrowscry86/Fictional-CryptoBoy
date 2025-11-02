@@ -6,7 +6,6 @@ import logging
 import time
 from typing import Dict, List, Optional, Union
 import requests
-import json
 import pandas as pd
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -21,19 +20,20 @@ logger = logging.getLogger(__name__)
 class SentimentAnalyzer:
     """Analyzes sentiment of crypto news using LLM"""
 
-    SENTIMENT_PROMPT_TEMPLATE = """You are a cryptocurrency market sentiment analyzer. Analyze the following news headline and return ONLY a single number between -1.0 and 1.0 representing the sentiment:
-
--1.0 = Very bearish (extremely negative for crypto prices)
--0.5 = Bearish (negative)
- 0.0 = Neutral
- 0.5 = Bullish (positive)
- 1.0 = Very bullish (extremely positive for crypto prices)
-
-Consider factors like: regulation, adoption, technology, market sentiment, institutional involvement, security issues.
-
-Headline: "{headline}"
-
-Return only the number, no explanation:"""
+    SENTIMENT_PROMPT_TEMPLATE = (
+        "You are a cryptocurrency market sentiment analyzer. "
+        "Analyze the following news headline and return ONLY a single number "
+        "between -1.0 and 1.0 representing the sentiment:\n\n"
+        "-1.0 = Very bearish (extremely negative for crypto prices)\n"
+        "-0.5 = Bearish (negative)\n"
+        " 0.0 = Neutral\n"
+        " 0.5 = Bullish (positive)\n"
+        " 1.0 = Very bullish (extremely positive for crypto prices)\n\n"
+        "Consider factors like: regulation, adoption, technology, market sentiment, "
+        "institutional involvement, security issues.\n\n"
+        "Headline: \"{headline}\"\n\n"
+        "Return only the number, no explanation:"
+    )
 
     def __init__(
         self,
@@ -265,9 +265,6 @@ Return only the number, no explanation:"""
 
         # Process in batch
         results = self.batch_sentiment_analysis(headlines, max_workers=max_workers)
-
-        # Create results DataFrame
-        results_df = pd.DataFrame(results)
 
         # Merge back to original DataFrame
         df_with_sentiment = df.copy()
