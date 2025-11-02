@@ -1,10 +1,11 @@
 """
 Add recent trades for activity feed demonstration
 """
+
 import sqlite3
 from datetime import datetime, timedelta
 
-conn = sqlite3.connect('tradesv3.dryrun.sqlite')
+conn = sqlite3.connect("tradesv3.dryrun.sqlite")
 cursor = conn.cursor()
 
 # Add a very recent trade (30 minutes ago)
@@ -12,7 +13,8 @@ recent_time = datetime.now() - timedelta(minutes=30)
 recent_exit = datetime.now() - timedelta(minutes=15)
 
 # Recent SOL/USDT entry
-cursor.execute("""
+cursor.execute(
+    """
 INSERT INTO trades (
     id, exchange, pair, is_open, fee_open, fee_close,
     open_rate, close_rate, amount, stake_amount,
@@ -29,11 +31,14 @@ INSERT INTO trades (
     'SOL', 'USDT', 163.45, 1, 168.50, 50.0,
     1.0, 0, 0.0, 0.0, 'spot', 8, 2, 1
 )
-""", (recent_time.strftime('%Y-%m-%d %H:%M:%S'), recent_exit.strftime('%Y-%m-%d %H:%M:%S')))
+""",
+    (recent_time.strftime("%Y-%m-%d %H:%M:%S"), recent_exit.strftime("%Y-%m-%d %H:%M:%S")),
+)
 
 # Very recent BTC entry (10 minutes ago) - still open
 very_recent = datetime.now() - timedelta(minutes=10)
-cursor.execute("""
+cursor.execute(
+    """
 INSERT INTO trades (
     id, exchange, pair, is_open, fee_open, fee_close,
     open_rate, close_rate, amount, stake_amount,
@@ -50,12 +55,14 @@ INSERT INTO trades (
     'ETH', 'USDT', 2638.40, 1, 2720.00, 50.0,
     1.0, 0, 0.0, 0.0, 'spot', 8, 2, 1
 )
-""", (very_recent.strftime('%Y-%m-%d %H:%M:%S'),))
+""",
+    (very_recent.strftime("%Y-%m-%d %H:%M:%S"),),
+)
 
 conn.commit()
 conn.close()
 
 print("✅ Added recent trades:")
-print(f"   • SOL/USDT EXIT - 30 min ago (+2.55%, +1.28 USDT)")
-print(f"   • ETH/USDT ENTRY - 10 min ago (OPEN)")
+print("   • SOL/USDT EXIT - 30 min ago (+2.55%, +1.28 USDT)")
+print("   • ETH/USDT ENTRY - 10 min ago (OPEN)")
 print("\n🚀 Run monitor to see activity feed!")

@@ -58,6 +58,15 @@ Thumbs.db
 user_data/
 .hyperopt/
 
+# Code quality and testing
+htmlcov/
+.coverage
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
 
-#Ignore insiders AI rules
-.github\instructions\codacy.instructions.md
+# Ignore insiders AI rules
+.github/instructions/codacy.instructions.md

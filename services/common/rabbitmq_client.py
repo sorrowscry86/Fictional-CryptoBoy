@@ -2,11 +2,13 @@
 RabbitMQ Client for CryptoBoy Microservices
 Provides connection management and publishing/consuming utilities
 """
-import os
-import time
+
 import json
 import logging
-from typing import Callable, Dict, Any, Optional
+import os
+import time
+from typing import Any, Callable, Dict, Optional
+
 import pika
 from pika.exceptions import AMQPConnectionError
 
@@ -23,7 +25,7 @@ class RabbitMQClient:
         username: str = None,
         password: str = None,
         max_retries: int = 5,
-        retry_delay: int = 5
+        retry_delay: int = 5,
     ):
         """
         Initialize RabbitMQ client
@@ -36,10 +38,10 @@ class RabbitMQClient:
             max_retries: Maximum connection retry attempts
             retry_delay: Delay between retries in seconds
         """
-        self.host = host or os.getenv('RABBITMQ_HOST', 'rabbitmq')
-        self.port = int(port or os.getenv('RABBITMQ_PORT', 5672))
-        self.username = username or os.getenv('RABBITMQ_USER', 'cryptoboy')
-        self.password = password or os.getenv('RABBITMQ_PASS', 'cryptoboy123')
+        self.host = host or os.getenv("RABBITMQ_HOST", "rabbitmq")
+        self.port = int(port or os.getenv("RABBITMQ_PORT", 5672))
+        self.username = username or os.getenv("RABBITMQ_USER", "cryptoboy")
+        self.password = password or os.getenv("RABBITMQ_PASS", "cryptoboy123")
         self.max_retries = max_retries
         self.retry_delay = retry_delay
 
@@ -56,7 +58,7 @@ class RabbitMQClient:
                     port=self.port,
                     credentials=credentials,
                     heartbeat=600,
-                    blocked_connection_timeout=300
+                    blocked_connection_timeout=300,
                 )
 
                 self.connection = pika.BlockingConnection(parameters)
@@ -66,9 +68,7 @@ class RabbitMQClient:
                 return
 
             except AMQPConnectionError as e:
-                logger.warning(
-                    f"Failed to connect to RabbitMQ (attempt {attempt + 1}/{self.max_retries}): {e}"
-                )
+                logger.warning(f"Failed to connect to RabbitMQ (attempt {attempt + 1}/{self.max_retries}): {e}")
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay)
                 else:
@@ -85,11 +85,7 @@ class RabbitMQClient:
             self.channel = self.connection.channel()
 
     def declare_queue(
-        self,
-        queue_name: str,
-        durable: bool = True,
-        auto_delete: bool = False,
-        arguments: Dict[str, Any] = None
+        self, queue_name: str, durable: bool = True, auto_delete: bool = False, arguments: Dict[str, Any] = None
     ) -> None:
         """
         Declare a queue
@@ -102,19 +98,12 @@ class RabbitMQClient:
         """
         self.ensure_connection()
         self.channel.queue_declare(
-            queue=queue_name,
-            durable=durable,
-            auto_delete=auto_delete,
-            arguments=arguments or {}
+            queue=queue_name, durable=durable, auto_delete=auto_delete, arguments=arguments or {}
         )
         logger.info(f"Queue '{queue_name}' declared (durable={durable})")
 
     def publish(
-        self,
-        queue_name: str,
-        message: Dict[str, Any],
-        persistent: bool = True,
-        declare_queue: bool = True
+        self, queue_name: str, message: Dict[str, Any], persistent: bool = True, declare_queue: bool = True
     ) -> None:
         """
         Publish a message to a queue
@@ -130,19 +119,13 @@ class RabbitMQClient:
         if declare_queue:
             self.declare_queue(queue_name)
 
-        body = json.dumps(message).encode('utf-8')
+        body = json.dumps(message).encode("utf-8")
         properties = pika.BasicProperties(
-            delivery_mode=2 if persistent else 1,  # 2 = persistent
-            content_type='application/json'
+            delivery_mode=2 if persistent else 1, content_type="application/json"  # 2 = persistent
         )
 
         try:
-            self.channel.basic_publish(
-                exchange='',
-                routing_key=queue_name,
-                body=body,
-                properties=properties
-            )
+            self.channel.basic_publish(exchange="", routing_key=queue_name, body=body, properties=properties)
             logger.debug(f"Published message to '{queue_name}': {len(body)} bytes")
         except Exception as e:
             logger.error(f"Failed to publish message to '{queue_name}': {e}")
@@ -154,7 +137,7 @@ class RabbitMQClient:
         callback: Callable,
         auto_ack: bool = False,
         prefetch_count: int = 1,
-        declare_queue: bool = True
+        declare_queue: bool = True,
     ) -> None:
         """
         Start consuming messages from a queue
@@ -172,11 +155,7 @@ class RabbitMQClient:
             self.declare_queue(queue_name)
 
         self.channel.basic_qos(prefetch_count=prefetch_count)
-        self.channel.basic_consume(
-            queue=queue_name,
-            on_message_callback=callback,
-            auto_ack=auto_ack
-        )
+        self.channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=auto_ack)
 
         logger.info(f"Starting to consume from '{queue_name}' (prefetch={prefetch_count})")
 
@@ -206,10 +185,7 @@ class RabbitMQClient:
             logger.info("Connection closed")
 
 
-def create_consumer_callback(
-    process_func: Callable[[Dict[str, Any]], None],
-    auto_ack: bool = False
-) -> Callable:
+def create_consumer_callback(process_func: Callable[[Dict[str, Any]], None], auto_ack: bool = False) -> Callable:
     """
     Create a callback function for message consumption
 
@@ -220,10 +196,11 @@ def create_consumer_callback(
     Returns:
         Callback function compatible with pika's basic_consume
     """
+
     def callback(ch, method, properties, body):
         try:
             # Decode and parse message
-            message = json.loads(body.decode('utf-8'))
+            message = json.loads(body.decode("utf-8"))
             logger.debug(f"Received message: {message.get('type', 'unknown')}")
 
             # Process message
