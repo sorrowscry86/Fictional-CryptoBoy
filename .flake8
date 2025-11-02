@@ -20,9 +20,7 @@ exclude =
     dist
 
 # Ignore specific errors
-extend-ignore =
-    E501,  # line too long (handled by black)
-    W503,  # line break before binary operator (black compatibility)
+extend-ignore = E501,W503
 
 # Show source code for each error
 show-source = True
