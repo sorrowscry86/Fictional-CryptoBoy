@@ -27,3 +27,7 @@ python-dotenv>=1.0.0
 
 # Logging
 colorlog>=6.7.0
+
+# FinBERT sentiment analysis (for sentiment-processor service)
+torch>=2.0.0
+transformers>=4.30.0

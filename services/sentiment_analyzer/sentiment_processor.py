@@ -1,6 +1,6 @@
 """
 Sentiment Processor Service - Consumes news and publishes sentiment signals
-Integrates with Ollama LLM for sentiment analysis
+Integrates with FinBERT for sentiment analysis
 """
 
 import os
@@ -9,7 +9,7 @@ import sys
 from datetime import datetime
 from typing import Any, Dict, List
 
-from llm.sentiment_analyzer import SentimentAnalyzer
+from llm.huggingface_sentiment import HuggingFaceFinancialSentiment
 from services.common.logging_config import setup_logging
 
 # Add parent directories to path for imports
@@ -53,8 +53,8 @@ class SentimentProcessor:
         Args:
             input_queue: RabbitMQ queue to consume news from
             output_queue: RabbitMQ queue to publish sentiment signals
-            model_name: Ollama model name (defaults to env or 'mistral:7b')
-            ollama_host: Ollama host URL (defaults to env or 'http://ollama:11434')
+            model_name: FinBERT model name (defaults to 'ProsusAI/finbert')
+            ollama_host: Deprecated (kept for backward compatibility)
         """
         self.input_queue = input_queue
         self.output_queue = output_queue
@@ -65,11 +65,11 @@ class SentimentProcessor:
         self.rabbitmq.declare_queue(self.input_queue, durable=True)
         self.rabbitmq.declare_queue(self.output_queue, durable=True)
 
-        # Initialize Sentiment Analyzer
-        model = model_name or os.getenv("OLLAMA_MODEL", "mistral:7b")
-        host = ollama_host or os.getenv("OLLAMA_HOST", "http://ollama:11434")
+        # Initialize FinBERT Sentiment Analyzer
+        model = model_name or os.getenv("HUGGINGFACE_MODEL", "ProsusAI/finbert")
+        logger.info(f"Loading FinBERT model: {model}")
 
-        self.analyzer = SentimentAnalyzer(model_name=model, ollama_host=host, timeout=30, max_retries=3)
+        self.analyzer = HuggingFaceFinancialSentiment(model_name=model)
 
         # Get custom trading pairs from environment if available
         pairs_env = os.getenv("TRADING_PAIRS", "")
@@ -80,7 +80,6 @@ class SentimentProcessor:
 
         logger.info("Initialized SentimentProcessor")
         logger.info(f"Model: {model}")
-        logger.info(f"Ollama host: {host}")
         logger.info(f"Tracking pairs: {', '.join(self.trading_pairs.keys())}")
 
         # Test connection
@@ -99,16 +98,16 @@ class SentimentProcessor:
         return pairs
 
     def _test_connection(self):
-        """Test connection to Ollama service"""
-        logger.info("Testing connection to Ollama...")
+        """Test connection to FinBERT model"""
+        logger.info("Testing FinBERT sentiment analysis...")
         try:
-            test_score = self.analyzer.get_sentiment_score("Bitcoin price rises")
+            test_score = self.analyzer.analyze_sentiment("Bitcoin price rises")
             if test_score is not None:
-                logger.info(f"Connection test successful (test score: {test_score})")
+                logger.info(f"FinBERT test successful (test score: {test_score:.2f})")
             else:
-                logger.warning("Connection test returned None score")
+                logger.warning("FinBERT test returned None score")
         except Exception as e:
-            logger.error(f"Connection test failed: {e}")
+            logger.error(f"FinBERT test failed: {e}")
             logger.warning("Will retry on first real message")
 
     def _match_article_to_pairs(self, title: str, content: str) -> List[str]:
@@ -181,10 +180,10 @@ class SentimentProcessor:
 
             logger.info(f"Processing article from {source}: {title[:60]}...")
 
-            # Perform sentiment analysis
-            sentiment_score = self.analyzer.get_sentiment_score(
-                headline=title, context=content[:500]  # First 500 chars of content as context
-            )
+            # Perform sentiment analysis with FinBERT
+            # Combine title and content snippet for better context
+            text_to_analyze = f"{title}. {content[:500]}"
+            sentiment_score = self.analyzer.analyze_sentiment(text_to_analyze)
 
             sentiment_label = self._classify_sentiment(sentiment_score)
 
@@ -211,7 +210,7 @@ class SentimentProcessor:
                     "sentiment_label": sentiment_label,
                     "published": published,
                     "analyzed_at": datetime.utcnow().isoformat(),
-                    "model": self.analyzer.model_name,
+                    "model": getattr(self.analyzer, "model_path", "FinBERT"),
                 }
 
                 # Publish to output queue
