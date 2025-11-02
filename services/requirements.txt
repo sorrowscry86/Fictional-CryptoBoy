@@ -20,7 +20,7 @@ lxml>=4.9.0
 
 # Exchange integration
 ccxt>=4.1.0
-ccxt.pro>=4.1.0  # For WebSocket streaming
+# Note: ccxt.pro requires paid subscription, using standard ccxt with REST API
 
 # Configuration
 python-dotenv>=1.0.0
