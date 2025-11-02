@@ -28,6 +28,22 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Function to check if port is open (portable)
+check_port() {
+    local host=$1
+    local port=$2
+    
+    # Try multiple methods for portability
+    if command_exists nc; then
+        nc -z "$host" "$port" 2>/dev/null
+    elif command_exists timeout; then
+        timeout 1 bash -c "echo > /dev/tcp/$host/$port" 2>/dev/null
+    else
+        # Fallback: try to connect with Python
+        python3 -c "import socket; s=socket.socket(); s.settimeout(1); s.connect(('$host', $port)); s.close()" 2>/dev/null
+    fi
+}
+
 # Function to run unit tests
 run_unit_tests() {
     local mode=$1
@@ -53,7 +69,7 @@ run_integration_tests() {
     
     if [ "$mode" = "native" ]; then
         # Check if services are running
-        if ! nc -z localhost 5672 2>/dev/null; then
+        if ! check_port localhost 5672; then
             print_warning "RabbitMQ not detected on localhost:5672"
             print_info "Starting services with docker-compose..."
             docker-compose up -d rabbitmq redis
@@ -82,7 +98,7 @@ run_e2e_tests() {
     
     if [ "$mode" = "native" ]; then
         # Check if full system is running
-        if ! nc -z localhost 5672 2>/dev/null; then
+        if ! check_port localhost 5672; then
             print_error "Full system must be running for E2E tests"
             print_info "Start with: docker-compose -f docker-compose.production.yml up -d"
             exit 1

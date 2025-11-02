@@ -301,6 +301,19 @@ safety check --file services/requirements.txt
 trivy image cryptoboy-trading-bot:latest
 ```
 
+### Code Coverage Secret
+
+The CI/CD pipeline uploads coverage to Codecov. To enable this:
+
+1. Sign up for [Codecov](https://codecov.io)
+2. Add your repository
+3. Add `CODECOV_TOKEN` to repository secrets:
+   - Go to Settings → Secrets and variables → Actions
+   - Add new secret: `CODECOV_TOKEN`
+   - Value: Your Codecov token from the Codecov dashboard
+
+Note: Coverage upload will be skipped if token is not set.
+
 ## 📚 Additional Resources
 
 - [pytest Documentation](https://docs.pytest.org/)
