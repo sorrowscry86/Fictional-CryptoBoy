@@ -2,11 +2,13 @@
 Redis Client for CryptoBoy Microservices
 Provides connection management and caching utilities
 """
-import os
-import time
+
 import json
 import logging
-from typing import Optional, Dict, Any, List
+import os
+import time
+from typing import Any, Dict, List, Optional
+
 import redis
 from redis.exceptions import ConnectionError, TimeoutError
 
@@ -24,7 +26,7 @@ class RedisClient:
         password: str = None,
         decode_responses: bool = True,
         max_retries: int = 5,
-        retry_delay: int = 2
+        retry_delay: int = 2,
     ):
         """
         Initialize Redis client
@@ -38,10 +40,10 @@ class RedisClient:
             max_retries: Maximum connection retry attempts
             retry_delay: Delay between retries in seconds
         """
-        self.host = host or os.getenv('REDIS_HOST', 'redis')
-        self.port = int(port or os.getenv('REDIS_PORT', 6379))
+        self.host = host or os.getenv("REDIS_HOST", "redis")
+        self.port = int(port or os.getenv("REDIS_PORT", 6379))
         self.db = db
-        self.password = password or os.getenv('REDIS_PASSWORD')
+        self.password = password or os.getenv("REDIS_PASSWORD")
         self.decode_responses = decode_responses
         self.max_retries = max_retries
         self.retry_delay = retry_delay
@@ -61,7 +63,7 @@ class RedisClient:
                     decode_responses=self.decode_responses,
                     socket_connect_timeout=5,
                     socket_keepalive=True,
-                    health_check_interval=30
+                    health_check_interval=30,
                 )
 
                 # Test connection
@@ -70,9 +72,7 @@ class RedisClient:
                 return
 
             except (ConnectionError, TimeoutError) as e:
-                logger.warning(
-                    f"Failed to connect to Redis (attempt {attempt + 1}/{self.max_retries}): {e}"
-                )
+                logger.warning(f"Failed to connect to Redis (attempt {attempt + 1}/{self.max_retries}): {e}")
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay)
                 else:
@@ -296,7 +296,7 @@ class RedisClient:
             logger.error(f"Failed to check existence: {e}")
             return 0
 
-    def keys(self, pattern: str = '*') -> List[str]:
+    def keys(self, pattern: str = "*") -> List[str]:
         """
         Find all keys matching pattern
 

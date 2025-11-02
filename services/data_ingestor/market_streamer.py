@@ -2,17 +2,19 @@
 Market Data Streamer - Real-time market data ingestion via WebSockets
 Publishes OHLCV candles to RabbitMQ for downstream processing
 """
+
+import asyncio
 import os
 import sys
-import asyncio
 from datetime import datetime
-from typing import List, Dict, Any
+from typing import Any, Dict, List
+
 import ccxt.pro as ccxtpro
 
-from services.common.rabbitmq_client import RabbitMQClient
 from services.common.logging_config import setup_logging
+from services.common.rabbitmq_client import RabbitMQClient
 
-logger = setup_logging('market-streamer')
+logger = setup_logging("market-streamer")
 
 
 class MarketDataStreamer:
@@ -21,12 +23,7 @@ class MarketDataStreamer:
     Publishes candle data to RabbitMQ for microservices consumption
     """
 
-    def __init__(
-        self,
-        symbols: List[str] = None,
-        timeframe: str = '1m',
-        queue_name: str = 'raw_market_data'
-    ):
+    def __init__(self, symbols: List[str] = None, timeframe: str = "1m", queue_name: str = "raw_market_data"):
         """
         Initialize market data streamer
 
@@ -45,17 +42,19 @@ class MarketDataStreamer:
         self.rabbitmq.declare_queue(self.queue_name, durable=True)
 
         # Initialize CCXT Pro exchange
-        api_key = os.getenv('BINANCE_API_KEY', '')
-        api_secret = os.getenv('BINANCE_API_SECRET', '')
+        api_key = os.getenv("BINANCE_API_KEY", "")
+        api_secret = os.getenv("BINANCE_API_SECRET", "")
 
-        self.exchange = ccxtpro.binance({
-            'apiKey': api_key,
-            'secret': api_secret,
-            'enableRateLimit': True,
-            'options': {
-                'defaultType': 'spot',
+        self.exchange = ccxtpro.binance(
+            {
+                "apiKey": api_key,
+                "secret": api_secret,
+                "enableRateLimit": True,
+                "options": {
+                    "defaultType": "spot",
+                },
             }
-        })
+        )
 
         # Track last published candles to avoid duplicates
         self.last_candles = {}
@@ -67,16 +66,12 @@ class MarketDataStreamer:
     @staticmethod
     def _get_default_symbols() -> List[str]:
         """Get default trading pairs from environment or use defaults"""
-        env_symbols = os.getenv('TRADING_PAIRS', '')
+        env_symbols = os.getenv("TRADING_PAIRS", "")
         if env_symbols:
-            return [s.strip() for s in env_symbols.split(',')]
-        return ['BTC/USDT', 'ETH/USDT', 'BNB/USDT']
+            return [s.strip() for s in env_symbols.split(",")]
+        return ["BTC/USDT", "ETH/USDT", "BNB/USDT"]
 
-    def _format_candle_message(
-        self,
-        symbol: str,
-        candle: List[Any]
-    ) -> Dict[str, Any]:
+    def _format_candle_message(self, symbol: str, candle: List[Any]) -> Dict[str, Any]:
         """
         Format a candle into a standardized message
 
@@ -91,20 +86,20 @@ class MarketDataStreamer:
         timestamp_iso = datetime.fromtimestamp(timestamp_ms / 1000).isoformat()
 
         return {
-            'type': 'market_data',
-            'source': 'binance_websocket',
-            'symbol': symbol,
-            'timeframe': self.timeframe,
-            'timestamp': timestamp_iso,
-            'timestamp_ms': timestamp_ms,
-            'data': {
-                'open': float(candle[1]),
-                'high': float(candle[2]),
-                'low': float(candle[3]),
-                'close': float(candle[4]),
-                'volume': float(candle[5])
+            "type": "market_data",
+            "source": "binance_websocket",
+            "symbol": symbol,
+            "timeframe": self.timeframe,
+            "timestamp": timestamp_iso,
+            "timestamp_ms": timestamp_ms,
+            "data": {
+                "open": float(candle[1]),
+                "high": float(candle[2]),
+                "low": float(candle[3]),
+                "close": float(candle[4]),
+                "volume": float(candle[5]),
             },
-            'collected_at': datetime.utcnow().isoformat()
+            "collected_at": datetime.utcnow().isoformat(),
         }
 
     def _should_publish_candle(self, symbol: str, timestamp_ms: int) -> bool:
@@ -149,12 +144,7 @@ class MarketDataStreamer:
                             message = self._format_candle_message(symbol, latest_candle)
 
                             # Publish to RabbitMQ
-                            self.rabbitmq.publish(
-                                self.queue_name,
-                                message,
-                                persistent=True,
-                                declare_queue=False
-                            )
+                            self.rabbitmq.publish(self.queue_name, message, persistent=True, declare_queue=False)
 
                             logger.info(
                                 f"Published {symbol} candle: "
@@ -182,10 +172,7 @@ class MarketDataStreamer:
         logger.info(f"Starting streams for {len(self.symbols)} symbols")
 
         # Create streaming tasks for all symbols
-        tasks = [
-            asyncio.create_task(self.stream_symbol(symbol))
-            for symbol in self.symbols
-        ]
+        tasks = [asyncio.create_task(self.stream_symbol(symbol)) for symbol in self.symbols]
 
         # Wait for all tasks (runs indefinitely)
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -225,16 +212,12 @@ class MarketDataStreamer:
 async def main():
     """Main function"""
     # Get configuration from environment
-    symbols_env = os.getenv('TRADING_PAIRS', 'BTC/USDT,ETH/USDT,BNB/USDT')
-    symbols = [s.strip() for s in symbols_env.split(',')]
-    timeframe = os.getenv('CANDLE_TIMEFRAME', '1m')
+    symbols_env = os.getenv("TRADING_PAIRS", "BTC/USDT,ETH/USDT,BNB/USDT")
+    symbols = [s.strip() for s in symbols_env.split(",")]
+    timeframe = os.getenv("CANDLE_TIMEFRAME", "1m")
 
     # Create and run streamer
-    streamer = MarketDataStreamer(
-        symbols=symbols,
-        timeframe=timeframe,
-        queue_name='raw_market_data'
-    )
+    streamer = MarketDataStreamer(symbols=symbols, timeframe=timeframe, queue_name="raw_market_data")
 
     await streamer.run()
 

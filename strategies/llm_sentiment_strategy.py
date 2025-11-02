@@ -2,16 +2,18 @@
 LLM Sentiment Trading Strategy for Freqtrade
 Combines technical indicators with LLM-based sentiment analysis
 """
+
 import logging
 import os
 from datetime import datetime
 from typing import Optional
+
 import pandas as pd
-from pandas import DataFrame
-from freqtrade.strategy import IStrategy
+import redis
 import talib.abstract as ta
 from freqtrade.persistence import Trade
-import redis
+from freqtrade.strategy import IStrategy
+from pandas import DataFrame
 
 logger = logging.getLogger(__name__)
 
@@ -30,10 +32,10 @@ class LLMSentimentStrategy(IStrategy):
 
     # Minimal ROI - Take profit levels
     minimal_roi = {
-        "0": 0.05,    # 5% profit target
-        "30": 0.03,   # 3% after 30 minutes
-        "60": 0.02,   # 2% after 1 hour
-        "120": 0.01   # 1% after 2 hours
+        "0": 0.05,  # 5% profit target
+        "30": 0.03,  # 3% after 30 minutes
+        "60": 0.02,  # 2% after 1 hour
+        "120": 0.01,  # 1% after 2 hours
     }
 
     # Stop loss
@@ -46,7 +48,7 @@ class LLMSentimentStrategy(IStrategy):
     trailing_only_offset_is_reached = True
 
     # Timeframe
-    timeframe = '1h'
+    timeframe = "1h"
 
     # Startup candle count
     startup_candle_count: int = 50
@@ -80,8 +82,8 @@ class LLMSentimentStrategy(IStrategy):
         super().__init__(config)
 
         # Initialize Redis client for sentiment cache
-        redis_host = os.getenv('REDIS_HOST', 'redis')
-        redis_port = int(os.getenv('REDIS_PORT', 6379))
+        redis_host = os.getenv("REDIS_HOST", "redis")
+        redis_port = int(os.getenv("REDIS_PORT", 6379))
 
         try:
             self.redis_client = redis.Redis(
@@ -91,7 +93,7 @@ class LLMSentimentStrategy(IStrategy):
                 decode_responses=True,
                 socket_connect_timeout=5,
                 socket_keepalive=True,
-                health_check_interval=30
+                health_check_interval=30,
             )
             # Test connection
             self.redis_client.ping()
@@ -128,25 +130,24 @@ class LLMSentimentStrategy(IStrategy):
             key = f"sentiment:{pair}"
             cached_data = self.redis_client.hgetall(key)
 
-            if not cached_data or 'score' not in cached_data:
+            if not cached_data or "score" not in cached_data:
                 logger.debug(f"No sentiment found for {pair}")
                 return 0.0
 
             # Check if sentiment is reasonably fresh
-            cached_ts = pd.to_datetime(cached_data.get('timestamp', '1970-01-01'), utc=True)
+            cached_ts = pd.to_datetime(cached_data.get("timestamp", "1970-01-01"), utc=True)
             # Make current_candle_timestamp timezone-aware if needed
             if current_candle_timestamp.tzinfo is None:
-                current_candle_timestamp = current_candle_timestamp.tz_localize('UTC')
+                current_candle_timestamp = current_candle_timestamp.tz_localize("UTC")
             age = (current_candle_timestamp - cached_ts).total_seconds() / 3600  # hours
 
             if age > self.sentiment_stale_hours:
                 logger.debug(
-                    f"Stale sentiment for {pair}: {age:.1f} hours old "
-                    f"(threshold: {self.sentiment_stale_hours}h)"
+                    f"Stale sentiment for {pair}: {age:.1f} hours old " f"(threshold: {self.sentiment_stale_hours}h)"
                 )
                 return 0.0
 
-            score = float(cached_data['score'])
+            score = float(cached_data["score"])
             logger.debug(
                 f"Sentiment for {pair}: {score:+.2f} "
                 f"(age: {age:.1f}h, headline: {cached_data.get('headline', '')[:30]}...)"
@@ -169,38 +170,36 @@ class LLMSentimentStrategy(IStrategy):
             DataFrame with indicators
         """
         # RSI
-        dataframe['rsi'] = ta.RSI(dataframe, timeperiod=self.rsi_period)
+        dataframe["rsi"] = ta.RSI(dataframe, timeperiod=self.rsi_period)
 
         # EMAs
-        dataframe['ema_short'] = ta.EMA(dataframe, timeperiod=self.ema_short_period)
-        dataframe['ema_long'] = ta.EMA(dataframe, timeperiod=self.ema_long_period)
+        dataframe["ema_short"] = ta.EMA(dataframe, timeperiod=self.ema_short_period)
+        dataframe["ema_long"] = ta.EMA(dataframe, timeperiod=self.ema_long_period)
 
         # MACD
         macd = ta.MACD(dataframe)
-        dataframe['macd'] = macd['macd']
-        dataframe['macdsignal'] = macd['macdsignal']
-        dataframe['macdhist'] = macd['macdhist']
+        dataframe["macd"] = macd["macd"]
+        dataframe["macdsignal"] = macd["macdsignal"]
+        dataframe["macdhist"] = macd["macdhist"]
 
         # Bollinger Bands
         bollinger = ta.BBANDS(dataframe, timeperiod=20)
-        dataframe['bb_lower'] = bollinger['lowerband']
-        dataframe['bb_middle'] = bollinger['middleband']
-        dataframe['bb_upper'] = bollinger['upperband']
+        dataframe["bb_lower"] = bollinger["lowerband"]
+        dataframe["bb_middle"] = bollinger["middleband"]
+        dataframe["bb_upper"] = bollinger["upperband"]
 
         # Volume indicators
-        dataframe['volume_mean'] = dataframe['volume'].rolling(window=20).mean()
+        dataframe["volume_mean"] = dataframe["volume"].rolling(window=20).mean()
 
         # ATR for volatility
-        dataframe['atr'] = ta.ATR(dataframe, timeperiod=14)
+        dataframe["atr"] = ta.ATR(dataframe, timeperiod=14)
 
         # Add sentiment scores from Redis cache
-        pair = metadata['pair']
-        dataframe['sentiment'] = dataframe['date'].apply(
-            lambda x: self._get_sentiment_score(pair, x)
-        )
+        pair = metadata["pair"]
+        dataframe["sentiment"] = dataframe["date"].apply(lambda x: self._get_sentiment_score(pair, x))
 
         # Sentiment momentum (rate of change)
-        dataframe['sentiment_momentum'] = dataframe['sentiment'].diff()
+        dataframe["sentiment_momentum"] = dataframe["sentiment"].diff()
 
         logger.debug(f"Populated indicators for {pair}")
         return dataframe
@@ -219,15 +218,15 @@ class LLMSentimentStrategy(IStrategy):
         dataframe.loc[
             (
                 # Sentiment is strongly positive
-                (dataframe['sentiment'] > self.sentiment_buy_threshold)
-                & (dataframe['ema_short'] > dataframe['ema_long'])  # Technical confirmation: upward momentum
-                & (dataframe['rsi'] < self.rsi_sell_threshold)
-                & (dataframe['rsi'] > self.rsi_buy_threshold)  # RSI not overbought
-                & (dataframe['macd'] > dataframe['macdsignal'])  # MACD bullish
-                & (dataframe['volume'] > dataframe['volume_mean'])  # Volume above average
-                & (dataframe['close'] < dataframe['bb_upper'])  # Safety: not at upper Bollinger Band
+                (dataframe["sentiment"] > self.sentiment_buy_threshold)
+                & (dataframe["ema_short"] > dataframe["ema_long"])  # Technical confirmation: upward momentum
+                & (dataframe["rsi"] < self.rsi_sell_threshold)
+                & (dataframe["rsi"] > self.rsi_buy_threshold)  # RSI not overbought
+                & (dataframe["macd"] > dataframe["macdsignal"])  # MACD bullish
+                & (dataframe["volume"] > dataframe["volume_mean"])  # Volume above average
+                & (dataframe["close"] < dataframe["bb_upper"])  # Safety: not at upper Bollinger Band
             ),
-            'enter_long'
+            "enter_long",
         ] = 1
 
         return dataframe
@@ -247,30 +246,29 @@ class LLMSentimentStrategy(IStrategy):
             (
                 # Sentiment turns negative OR technical signals show weakness OR MACD turns bearish
                 (
-                    (dataframe['sentiment'] < self.sentiment_sell_threshold)
-                    | (
-                        (dataframe['ema_short'] < dataframe['ema_long'])
-                        & (dataframe['rsi'] > self.rsi_sell_threshold)
-                    )
-                    | (dataframe['macd'] < dataframe['macdsignal'])
+                    (dataframe["sentiment"] < self.sentiment_sell_threshold)
+                    | ((dataframe["ema_short"] < dataframe["ema_long"]) & (dataframe["rsi"] > self.rsi_sell_threshold))
+                    | (dataframe["macd"] < dataframe["macdsignal"])
                 )
             ),
-            'exit_long'
+            "exit_long",
         ] = 1
 
         return dataframe
 
-    def custom_stake_amount(self,
-                           pair: str,
-                           current_time: datetime,
-                           current_rate: float,
-                           proposed_stake: float,
-                           min_stake: Optional[float],
-                           max_stake: float,
-                           leverage: float,
-                           entry_tag: Optional[str],
-                           side: str,
-                           **kwargs) -> float:
+    def custom_stake_amount(
+        self,
+        pair: str,
+        current_time: datetime,
+        current_rate: float,
+        proposed_stake: float,
+        min_stake: Optional[float],
+        max_stake: float,
+        leverage: float,
+        entry_tag: Optional[str],
+        side: str,
+        **kwargs,
+    ) -> float:
         """
         Customize stake amount based on sentiment strength
 
@@ -302,16 +300,18 @@ class LLMSentimentStrategy(IStrategy):
             # Default stake
             return proposed_stake
 
-    def confirm_trade_entry(self,
-                           pair: str,
-                           order_type: str,
-                           amount: float,
-                           rate: float,
-                           time_in_force: str,
-                           current_time: datetime,
-                           entry_tag: Optional[str],
-                           side: str,
-                           **kwargs) -> bool:
+    def confirm_trade_entry(
+        self,
+        pair: str,
+        order_type: str,
+        amount: float,
+        rate: float,
+        time_in_force: str,
+        current_time: datetime,
+        entry_tag: Optional[str],
+        side: str,
+        **kwargs,
+    ) -> bool:
         """
         Confirm trade entry (last chance to reject)
 
@@ -338,13 +338,9 @@ class LLMSentimentStrategy(IStrategy):
 
         return True
 
-    def custom_exit(self,
-                   pair: str,
-                   trade: Trade,
-                   current_time: datetime,
-                   current_rate: float,
-                   current_profit: float,
-                   **kwargs) -> Optional[str]:
+    def custom_exit(
+        self, pair: str, trade: Trade, current_time: datetime, current_rate: float, current_profit: float, **kwargs
+    ) -> Optional[str]:
         """
         Custom exit logic
 
@@ -373,15 +369,17 @@ class LLMSentimentStrategy(IStrategy):
 
         return None
 
-    def leverage(self,
-                pair: str,
-                current_time: datetime,
-                current_rate: float,
-                proposed_leverage: float,
-                max_leverage: float,
-                entry_tag: Optional[str],
-                side: str,
-                **kwargs) -> float:
+    def leverage(
+        self,
+        pair: str,
+        current_time: datetime,
+        current_rate: float,
+        proposed_leverage: float,
+        max_leverage: float,
+        entry_tag: Optional[str],
+        side: str,
+        **kwargs,
+    ) -> float:
         """
         Set leverage (default: no leverage)
 

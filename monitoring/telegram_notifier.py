@@ -1,27 +1,22 @@
 """
 Telegram Notifier - Sends trading alerts via Telegram
 """
-import os
+
 import logging
+import os
 from datetime import datetime
 from typing import Dict, Optional
+
 import requests
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
 class TelegramNotifier:
     """Sends notifications to Telegram"""
 
-    def __init__(
-        self,
-        bot_token: Optional[str] = None,
-        chat_id: Optional[str] = None
-    ):
+    def __init__(self, bot_token: Optional[str] = None, chat_id: Optional[str] = None):
         """
         Initialize Telegram notifier
 
@@ -29,8 +24,8 @@ class TelegramNotifier:
             bot_token: Telegram bot token
             chat_id: Telegram chat ID
         """
-        self.bot_token = bot_token or os.getenv('TELEGRAM_BOT_TOKEN')
-        self.chat_id = chat_id or os.getenv('TELEGRAM_CHAT_ID')
+        self.bot_token = bot_token or os.getenv("TELEGRAM_BOT_TOKEN")
+        self.chat_id = chat_id or os.getenv("TELEGRAM_CHAT_ID")
 
         if not self.bot_token or not self.chat_id:
             logger.warning("Telegram credentials not configured")
@@ -39,12 +34,7 @@ class TelegramNotifier:
             self.enabled = True
             logger.info("Telegram notifier initialized")
 
-    def send_message(
-        self,
-        message: str,
-        parse_mode: str = 'Markdown',
-        disable_notification: bool = False
-    ) -> bool:
+    def send_message(self, message: str, parse_mode: str = "Markdown", disable_notification: bool = False) -> bool:
         """
         Send a message to Telegram
 
@@ -63,10 +53,10 @@ class TelegramNotifier:
         try:
             url = f"https://api.telegram.org/bot{self.bot_token}/sendMessage"
             payload = {
-                'chat_id': self.chat_id,
-                'text': message,
-                'parse_mode': parse_mode,
-                'disable_notification': disable_notification
+                "chat_id": self.chat_id,
+                "text": message,
+                "parse_mode": parse_mode,
+                "disable_notification": disable_notification,
             }
 
             response = requests.post(url, json=payload, timeout=10)
@@ -87,7 +77,7 @@ class TelegramNotifier:
         amount: float,
         stop_loss: Optional[float] = None,
         take_profit: Optional[float] = None,
-        sentiment_score: Optional[float] = None
+        sentiment_score: Optional[float] = None,
     ) -> bool:
         """
         Send trade notification
@@ -135,7 +125,7 @@ class TelegramNotifier:
         amount: float,
         profit_pct: float,
         profit_amount: float,
-        duration: str
+        duration: str,
     ) -> bool:
         """
         Send position close notification
@@ -165,12 +155,7 @@ class TelegramNotifier:
         return self.send_message(message)
 
     def send_portfolio_update(
-        self,
-        total_value: float,
-        daily_pnl: float,
-        daily_pnl_pct: float,
-        open_positions: int,
-        today_trades: int
+        self, total_value: float, daily_pnl: float, daily_pnl_pct: float, open_positions: int, today_trades: int
     ) -> bool:
         """
         Send portfolio summary
@@ -197,12 +182,7 @@ class TelegramNotifier:
 
         return self.send_message(message, disable_notification=True)
 
-    def send_risk_alert(
-        self,
-        alert_type: str,
-        message_text: str,
-        severity: str = "warning"
-    ) -> bool:
+    def send_risk_alert(self, alert_type: str, message_text: str, severity: str = "warning") -> bool:
         """
         Send risk management alert
 
@@ -214,20 +194,16 @@ class TelegramNotifier:
         Returns:
             True if successful
         """
-        emoji_map = {
-            'info': 'ℹ️',
-            'warning': '⚠️',
-            'critical': '🚨'
-        }
+        emoji_map = {"info": "ℹ️", "warning": "⚠️", "critical": "🚨"}
 
-        emoji = emoji_map.get(severity.lower(), '⚠️')
+        emoji = emoji_map.get(severity.lower(), "⚠️")
 
         message = f"{emoji} *Risk Alert: {alert_type}*\n\n"
         message += message_text
         message += f"\n\n⏰ {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
         # Don't disable notifications for critical alerts
-        disable_notif = (severity.lower() != 'critical')
+        disable_notif = severity.lower() != "critical"
 
         return self.send_message(message, disable_notification=disable_notif)
 
@@ -248,11 +224,7 @@ class TelegramNotifier:
 
         return self.send_message(message)
 
-    def send_system_status(
-        self,
-        status: str,
-        details: Optional[Dict] = None
-    ) -> bool:
+    def send_system_status(self, status: str, details: Optional[Dict] = None) -> bool:
         """
         Send system status update
 
@@ -289,8 +261,7 @@ class TelegramNotifier:
             return False
 
         test_message = (
-            "🧪 Testing Telegram connection...\n\n"
-            "If you receive this message, the bot is configured correctly!"
+            "🧪 Testing Telegram connection...\n\n" "If you receive this message, the bot is configured correctly!"
         )
 
         if self.send_message(test_message):
@@ -303,6 +274,7 @@ class TelegramNotifier:
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
+
     load_dotenv()
 
     notifier = TelegramNotifier()
@@ -321,17 +293,13 @@ if __name__ == "__main__":
                 amount=0.002,
                 stop_loss=48500.0,
                 take_profit=52500.0,
-                sentiment_score=0.75
+                sentiment_score=0.75,
             )
 
             # Test portfolio update
             print("Sending test portfolio update...")
             notifier.send_portfolio_update(
-                total_value=10500.0,
-                daily_pnl=500.0,
-                daily_pnl_pct=5.0,
-                open_positions=2,
-                today_trades=3
+                total_value=10500.0, daily_pnl=500.0, daily_pnl_pct=5.0, open_positions=2, today_trades=3
             )
 
             # Test risk alert
@@ -339,7 +307,7 @@ if __name__ == "__main__":
             notifier.send_risk_alert(
                 alert_type="Daily Loss Limit",
                 message_text="Daily loss approaching 5% limit. Current: 4.2%",
-                severity="warning"
+                severity="warning",
             )
 
             print("\n✓ All test notifications sent!")

@@ -1,19 +1,18 @@
 """
 Sentiment Analyzer - Uses LLM for crypto news sentiment analysis
 """
-import os
-import logging
-import time
-from typing import Dict, List, Optional, Union
-import requests
-import pandas as pd
-from pathlib import Path
-from concurrent.futures import ThreadPoolExecutor, as_completed
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+import logging
+import os
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
+from typing import Dict, List, Optional, Union
+
+import pandas as pd
+import requests
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -31,7 +30,7 @@ class SentimentAnalyzer:
         " 1.0 = Very bullish (extremely positive for crypto prices)\n\n"
         "Consider factors like: regulation, adoption, technology, market sentiment, "
         "institutional involvement, security issues.\n\n"
-        "Headline: \"{headline}\"\n\n"
+        'Headline: "{headline}"\n\n'
         "Return only the number, no explanation:"
     )
 
@@ -40,7 +39,7 @@ class SentimentAnalyzer:
         model_name: str = "mistral:7b",
         ollama_host: str = "http://localhost:11434",
         timeout: int = 30,
-        max_retries: int = 3
+        max_retries: int = 3,
     ):
         """
         Initialize the sentiment analyzer
@@ -52,7 +51,7 @@ class SentimentAnalyzer:
             max_retries: Maximum number of retries on failure
         """
         self.model_name = model_name
-        self.ollama_host = ollama_host.rstrip('/')
+        self.ollama_host = ollama_host.rstrip("/")
         self.api_url = f"{self.ollama_host}/api"
         self.timeout = timeout
         self.max_retries = max_retries
@@ -73,7 +72,7 @@ class SentimentAnalyzer:
         text = response_text.strip()
 
         # Remove common prefixes
-        for prefix in ['score:', 'sentiment:', 'answer:']:
+        for prefix in ["score:", "sentiment:", "answer:"]:
             if text.lower().startswith(prefix):
                 text = text[len(prefix):].strip()
 
@@ -87,11 +86,7 @@ class SentimentAnalyzer:
             logger.warning(f"Could not parse sentiment score from: {response_text[:100]}")
             return None
 
-    def get_sentiment_score(
-        self,
-        headline: str,
-        context: str = ""
-    ) -> float:
+    def get_sentiment_score(self, headline: str, context: str = "") -> float:
         """
         Get sentiment score for a single headline
 
@@ -125,15 +120,15 @@ class SentimentAnalyzer:
                         "stream": False,
                         "options": {
                             "temperature": 0.3,  # Lower temperature for more consistent results
-                            "num_predict": 10,   # Short response expected
-                        }
+                            "num_predict": 10,  # Short response expected
+                        },
                     },
-                    timeout=self.timeout
+                    timeout=self.timeout,
                 )
                 response.raise_for_status()
 
                 data = response.json()
-                response_text = data.get('response', '')
+                response_text = data.get("response", "")
 
                 # Parse the score
                 score = self._parse_sentiment_score(response_text)
@@ -147,11 +142,11 @@ class SentimentAnalyzer:
             except requests.exceptions.Timeout:
                 logger.warning(f"Timeout on attempt {attempt + 1}")
                 if attempt < self.max_retries - 1:
-                    time.sleep(2 ** attempt)  # Exponential backoff
+                    time.sleep(2**attempt)  # Exponential backoff
             except requests.exceptions.RequestException as e:
                 logger.error(f"Request error: {e}")
                 if attempt < self.max_retries - 1:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
             except Exception as e:
                 logger.error(f"Unexpected error: {e}")
                 break
@@ -161,10 +156,7 @@ class SentimentAnalyzer:
         return 0.0
 
     def batch_sentiment_analysis(
-        self,
-        headlines: List[Union[str, Dict]],
-        max_workers: int = 4,
-        show_progress: bool = True
+        self, headlines: List[Union[str, Dict]], max_workers: int = 4, show_progress: bool = True
     ) -> List[Dict]:
         """
         Analyze sentiment for multiple headlines in parallel
@@ -181,21 +173,17 @@ class SentimentAnalyzer:
 
         def process_headline(item):
             if isinstance(item, dict):
-                headline = item.get('headline', '')
-                context = item.get('context', '')
-                metadata = {k: v for k, v in item.items() if k not in ['headline', 'context']}
+                headline = item.get("headline", "")
+                context = item.get("context", "")
+                metadata = {k: v for k, v in item.items() if k not in ["headline", "context"]}
             else:
                 headline = str(item)
-                context = ''
+                context = ""
                 metadata = {}
 
             score = self.get_sentiment_score(headline, context)
 
-            return {
-                'headline': headline,
-                'sentiment_score': score,
-                **metadata
-            }
+            return {"headline": headline, "sentiment_score": score, **metadata}
 
         total = len(headlines)
         logger.info(f"Starting batch sentiment analysis for {total} headlines with {max_workers} workers")
@@ -217,22 +205,14 @@ class SentimentAnalyzer:
                     idx = futures[future]
                     headline = headlines[idx]
                     if isinstance(headline, dict):
-                        headline = headline.get('headline', '')
-                    results.append({
-                        'headline': str(headline),
-                        'sentiment_score': 0.0,
-                        'error': str(e)
-                    })
+                        headline = headline.get("headline", "")
+                    results.append({"headline": str(headline), "sentiment_score": 0.0, "error": str(e)})
 
         logger.info(f"Completed batch analysis: {len(results)}/{total} headlines")
         return results
 
     def analyze_dataframe(
-        self,
-        df: pd.DataFrame,
-        headline_col: str = 'headline',
-        timestamp_col: str = 'timestamp',
-        max_workers: int = 4
+        self, df: pd.DataFrame, headline_col: str = "headline", timestamp_col: str = "timestamp", max_workers: int = 4
     ) -> pd.DataFrame:
         """
         Analyze sentiment for headlines in a DataFrame
@@ -257,10 +237,10 @@ class SentimentAnalyzer:
         # Prepare headlines for batch processing
         headlines = []
         for idx, row in df.iterrows():
-            item = {'headline': row[headline_col]}
+            item = {"headline": row[headline_col]}
             if timestamp_col in df.columns:
-                item['timestamp'] = row[timestamp_col]
-            item['original_index'] = idx
+                item["timestamp"] = row[timestamp_col]
+            item["original_index"] = idx
             headlines.append(item)
 
         # Process in batch
@@ -268,22 +248,18 @@ class SentimentAnalyzer:
 
         # Merge back to original DataFrame
         df_with_sentiment = df.copy()
-        df_with_sentiment['sentiment_score'] = 0.0
+        df_with_sentiment["sentiment_score"] = 0.0
 
         for result in results:
-            idx = result.get('original_index')
+            idx = result.get("original_index")
             if idx is not None and idx in df_with_sentiment.index:
-                df_with_sentiment.at[idx, 'sentiment_score'] = result['sentiment_score']
+                df_with_sentiment.at[idx, "sentiment_score"] = result["sentiment_score"]
 
         logger.info(f"Added sentiment scores to {len(df_with_sentiment)} rows")
         return df_with_sentiment
 
     def save_sentiment_scores(
-        self,
-        df: pd.DataFrame,
-        output_file: str,
-        timestamp_col: str = 'timestamp',
-        score_col: str = 'sentiment_score'
+        self, df: pd.DataFrame, output_file: str, timestamp_col: str = "timestamp", score_col: str = "sentiment_score"
     ):
         """
         Save sentiment scores to CSV
@@ -303,10 +279,10 @@ class SentimentAnalyzer:
 
         # Select relevant columns
         cols_to_save = [timestamp_col, score_col]
-        if 'headline' in df.columns:
-            cols_to_save.insert(1, 'headline')
-        if 'source' in df.columns:
-            cols_to_save.append('source')
+        if "headline" in df.columns:
+            cols_to_save.insert(1, "headline")
+        if "source" in df.columns:
+            cols_to_save.append("source")
 
         df_to_save = df[cols_to_save].copy()
         df_to_save.to_csv(output_path, index=False)
@@ -332,11 +308,12 @@ class SentimentAnalyzer:
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
+
     load_dotenv()
 
     # Initialize
-    model_name = os.getenv('OLLAMA_MODEL', 'mistral:7b')
-    ollama_host = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
+    model_name = os.getenv("OLLAMA_MODEL", "mistral:7b")
+    ollama_host = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 
     analyzer = SentimentAnalyzer(model_name=model_name, ollama_host=ollama_host)
 
@@ -348,7 +325,7 @@ if __name__ == "__main__":
             "Major exchange hacked, millions of dollars stolen",
             "SEC approves Bitcoin ETF application",
             "China bans cryptocurrency mining operations",
-            "Ethereum successfully completes major network upgrade"
+            "Ethereum successfully completes major network upgrade",
         ]
 
         print("\nAnalyzing sample headlines:")
@@ -357,8 +334,8 @@ if __name__ == "__main__":
         results = analyzer.batch_sentiment_analysis(test_headlines, max_workers=2)
 
         for result in results:
-            score = result['sentiment_score']
-            headline = result['headline']
+            score = result["sentiment_score"]
+            headline = result["headline"]
             sentiment_label = "BULLISH" if score > 0.3 else "BEARISH" if score < -0.3 else "NEUTRAL"
             print(f"\nScore: {score:+.2f} ({sentiment_label})")
             print(f"Headline: {headline}")

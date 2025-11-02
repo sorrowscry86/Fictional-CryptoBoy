@@ -3,22 +3,22 @@ Sentiment Processing Load Test
 Tests FinBERT sentiment analysis with concurrent articles
 Measures throughput and latency for financial sentiment model
 """
-import sys
-import os
-import time
+
 import json
-from datetime import datetime
-from typing import List, Dict, Any
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
 import statistics
+import sys
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Dict
 
 # Add parent directory to path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
 
-from llm.huggingface_sentiment import HuggingFaceFinancialSentiment
-from services.common.logging_config import setup_logging
+from llm.huggingface_sentiment import HuggingFaceFinancialSentiment  # noqa: E402
+from services.common.logging_config import setup_logging  # noqa: E402
 
-logger = setup_logging('sentiment-load-test')
+logger = setup_logging("sentiment-load-test")
 
 
 class SentimentLoadTest:
@@ -32,27 +32,24 @@ class SentimentLoadTest:
         "Ethereum successfully completes network upgrade, gas fees drop 90%",
         "SEC approves first spot Bitcoin ETF, opening door for mainstream adoption",
         "Central bank explores blockchain integration for national currency",
-
         # Bearish
         "Major cryptocurrency exchange hacked, $500 million stolen",
         "Regulatory crackdown threatens crypto industry",
         "Bitcoin crashes 20% in hours amid liquidations",
         "Study reveals 90% of crypto projects fail within first year",
         "Government proposes ban on cryptocurrency mining operations",
-
         # Neutral
         "Cryptocurrency market sees mixed performance this week",
         "New blockchain startup raises $10 million in funding",
         "Industry conference discusses future of digital assets",
         "Trading volume remains steady across major exchanges",
         "Analysts divided on Bitcoin's near-term price direction",
-
         # Technical/Educational
         "Understanding consensus mechanisms in blockchain networks",
         "How to secure your cryptocurrency wallet: A guide",
         "Comparing layer-2 scaling solutions for Ethereum",
         "The evolution of smart contract platforms",
-        "DeFi explained: Decentralized Finance fundamentals"
+        "DeFi explained: Decentralized Finance fundamentals",
     ]
 
     def __init__(self, model_name: str = None):
@@ -62,17 +59,17 @@ class SentimentLoadTest:
         Args:
             model_name: FinBERT model name ('finbert', 'finbert-tone', or full HF path)
         """
-        model = model_name or os.getenv('HUGGINGFACE_MODEL', 'finbert')
+        model = model_name or os.getenv("HUGGINGFACE_MODEL", "finbert")
 
         self.analyzer = HuggingFaceFinancialSentiment(model_name=model)
 
         self.results = {
-            'latencies': [],
-            'scores': [],
-            'total_articles': 0,
-            'failed_articles': 0,
-            'start_time': None,
-            'end_time': None
+            "latencies": [],
+            "scores": [],
+            "total_articles": 0,
+            "failed_articles": 0,
+            "start_time": None,
+            "end_time": None,
         }
 
         logger.info(f"Initialized sentiment load tester with FinBERT model: {model}")
@@ -106,22 +103,22 @@ class SentimentLoadTest:
             latency = (time.time() - start) * 1000  # ms
 
             return {
-                'success': True,
-                'latency_ms': latency,
-                'score': score,
-                'headline': headline,
-                'article_id': article_id
+                "success": True,
+                "latency_ms": latency,
+                "score": score,
+                "headline": headline,
+                "article_id": article_id,
             }
 
         except Exception as e:
             latency = (time.time() - start) * 1000
             logger.error(f"Failed to analyze article {article_id}: {e}")
             return {
-                'success': False,
-                'latency_ms': latency,
-                'error': str(e),
-                'headline': headline,
-                'article_id': article_id
+                "success": False,
+                "latency_ms": latency,
+                "error": str(e),
+                "headline": headline,
+                "article_id": article_id,
             }
 
     def test_sequential_processing(self, num_articles: int = 100):
@@ -132,27 +129,24 @@ class SentimentLoadTest:
             num_articles: Number of articles to process
         """
         logger.info(f"Starting sequential processing test: {num_articles} articles")
-        self.results['start_time'] = time.time()
+        self.results["start_time"] = time.time()
 
         for i in range(num_articles):
             headline = self.TEST_HEADLINES[i % len(self.TEST_HEADLINES)]
             result = self.analyze_headline(headline, i)
 
-            if result['success']:
-                self.results['latencies'].append(result['latency_ms'])
-                self.results['scores'].append(result['score'])
-                self.results['total_articles'] += 1
+            if result["success"]:
+                self.results["latencies"].append(result["latency_ms"])
+                self.results["scores"].append(result["score"])
+                self.results["total_articles"] += 1
             else:
-                self.results['failed_articles'] += 1
+                self.results["failed_articles"] += 1
 
             if (i + 1) % 10 == 0:
-                avg_latency = statistics.mean(self.results['latencies'][-10:])
-                logger.info(
-                    f"Progress: {i+1}/{num_articles}, "
-                    f"avg latency (last 10): {avg_latency:.0f}ms"
-                )
+                avg_latency = statistics.mean(self.results["latencies"][-10:])
+                logger.info(f"Progress: {i+1}/{num_articles}, " f"avg latency (last 10): {avg_latency:.0f}ms")
 
-        self.results['end_time'] = time.time()
+        self.results["end_time"] = time.time()
         logger.info(
             f"Sequential processing complete: "
             f"{self.results['total_articles']} successful, "
@@ -167,16 +161,10 @@ class SentimentLoadTest:
             num_articles: Number of articles to process
             max_workers: Maximum parallel workers (default 4, recommended for LLM)
         """
-        logger.info(
-            f"Starting parallel processing test: {num_articles} articles, "
-            f"{max_workers} workers"
-        )
-        self.results['start_time'] = time.time()
+        logger.info(f"Starting parallel processing test: {num_articles} articles, " f"{max_workers} workers")
+        self.results["start_time"] = time.time()
 
-        headlines = [
-            (self.TEST_HEADLINES[i % len(self.TEST_HEADLINES)], i)
-            for i in range(num_articles)
-        ]
+        headlines = [(self.TEST_HEADLINES[i % len(self.TEST_HEADLINES)], i) for i in range(num_articles)]
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
@@ -188,18 +176,18 @@ class SentimentLoadTest:
             for future in as_completed(futures):
                 result = future.result()
 
-                if result['success']:
-                    self.results['latencies'].append(result['latency_ms'])
-                    self.results['scores'].append(result['score'])
-                    self.results['total_articles'] += 1
+                if result["success"]:
+                    self.results["latencies"].append(result["latency_ms"])
+                    self.results["scores"].append(result["score"])
+                    self.results["total_articles"] += 1
                 else:
-                    self.results['failed_articles'] += 1
+                    self.results["failed_articles"] += 1
 
                 completed += 1
                 if completed % 10 == 0:
                     logger.info(f"Progress: {completed}/{num_articles} articles")
 
-        self.results['end_time'] = time.time()
+        self.results["end_time"] = time.time()
         logger.info(
             f"Parallel processing complete: "
             f"{self.results['total_articles']} successful, "
@@ -214,36 +202,31 @@ class SentimentLoadTest:
             duration_seconds: Test duration in seconds
             rate_limit: Target articles per minute
         """
-        logger.info(
-            f"Starting sustained load test: {duration_seconds}s duration, "
-            f"{rate_limit} articles/min target"
-        )
-        self.results['start_time'] = time.time()
+        logger.info(f"Starting sustained load test: {duration_seconds}s duration, " f"{rate_limit} articles/min target")
+        self.results["start_time"] = time.time()
 
         article_id = 0
         interval = 60 / rate_limit  # seconds between articles
 
-        while (time.time() - self.results['start_time']) < duration_seconds:
+        while (time.time() - self.results["start_time"]) < duration_seconds:
             headline = self.TEST_HEADLINES[article_id % len(self.TEST_HEADLINES)]
             result = self.analyze_headline(headline, article_id)
 
-            if result['success']:
-                self.results['latencies'].append(result['latency_ms'])
-                self.results['scores'].append(result['score'])
-                self.results['total_articles'] += 1
+            if result["success"]:
+                self.results["latencies"].append(result["latency_ms"])
+                self.results["scores"].append(result["score"])
+                self.results["total_articles"] += 1
             else:
-                self.results['failed_articles'] += 1
+                self.results["failed_articles"] += 1
 
             article_id += 1
 
             # Sleep to maintain rate limit
             time.sleep(interval)
 
-        self.results['end_time'] = time.time()
+        self.results["end_time"] = time.time()
         logger.info(
-            f"Sustained load test complete: "
-            f"{self.results['total_articles']} articles in "
-            f"{duration_seconds}s"
+            f"Sustained load test complete: " f"{self.results['total_articles']} articles in " f"{duration_seconds}s"
         )
 
     def generate_report(self) -> Dict[str, Any]:
@@ -253,46 +236,47 @@ class SentimentLoadTest:
         Returns:
             Performance metrics dictionary
         """
-        duration = self.results['end_time'] - self.results['start_time']
-        throughput = self.results['total_articles'] / duration if duration > 0 else 0
+        duration = self.results["end_time"] - self.results["start_time"]
+        throughput = self.results["total_articles"] / duration if duration > 0 else 0
 
-        latencies = self.results['latencies']
-        scores = self.results['scores']
+        latencies = self.results["latencies"]
+        scores = self.results["scores"]
 
         report = {
-            'summary': {
-                'total_articles': self.results['total_articles'],
-                'failed_articles': self.results['failed_articles'],
-                'duration_seconds': round(duration, 2),
-                'throughput_articles_per_sec': round(throughput, 2),
-                'throughput_articles_per_min': round(throughput * 60, 2),
-                'success_rate': round(
-                    self.results['total_articles'] /
-                    (self.results['total_articles'] + self.results['failed_articles']) * 100,
-                    2
-                ) if (self.results['total_articles'] + self.results['failed_articles']) > 0 else 0
+            "summary": {
+                "total_articles": self.results["total_articles"],
+                "failed_articles": self.results["failed_articles"],
+                "duration_seconds": round(duration, 2),
+                "throughput_articles_per_sec": round(throughput, 2),
+                "throughput_articles_per_min": round(throughput * 60, 2),
+                "success_rate": (
+                    round(
+                        self.results["total_articles"]
+                        / (self.results["total_articles"] + self.results["failed_articles"])
+                        * 100,
+                        2,
+                    )
+                    if (self.results["total_articles"] + self.results["failed_articles"]) > 0
+                    else 0
+                ),
             },
-            'latency_ms': {
-                'min': round(min(latencies), 2) if latencies else 0,
-                'max': round(max(latencies), 2) if latencies else 0,
-                'mean': round(statistics.mean(latencies), 2) if latencies else 0,
-                'median': round(statistics.median(latencies), 2) if latencies else 0,
-                'p95': round(
-                    statistics.quantiles(latencies, n=20)[18], 2
-                ) if len(latencies) > 20 else 0,
-                'p99': round(
-                    statistics.quantiles(latencies, n=100)[98], 2
-                ) if len(latencies) > 100 else 0,
+            "latency_ms": {
+                "min": round(min(latencies), 2) if latencies else 0,
+                "max": round(max(latencies), 2) if latencies else 0,
+                "mean": round(statistics.mean(latencies), 2) if latencies else 0,
+                "median": round(statistics.median(latencies), 2) if latencies else 0,
+                "p95": round(statistics.quantiles(latencies, n=20)[18], 2) if len(latencies) > 20 else 0,
+                "p99": round(statistics.quantiles(latencies, n=100)[98], 2) if len(latencies) > 100 else 0,
             },
-            'sentiment_distribution': {
-                'mean_score': round(statistics.mean(scores), 3) if scores else 0,
-                'median_score': round(statistics.median(scores), 3) if scores else 0,
-                'min_score': round(min(scores), 3) if scores else 0,
-                'max_score': round(max(scores), 3) if scores else 0,
-                'bullish_count': sum(1 for s in scores if s > 0.3),
-                'bearish_count': sum(1 for s in scores if s < -0.3),
-                'neutral_count': sum(1 for s in scores if -0.3 <= s <= 0.3),
-            }
+            "sentiment_distribution": {
+                "mean_score": round(statistics.mean(scores), 3) if scores else 0,
+                "median_score": round(statistics.median(scores), 3) if scores else 0,
+                "min_score": round(min(scores), 3) if scores else 0,
+                "max_score": round(max(scores), 3) if scores else 0,
+                "bullish_count": sum(1 for s in scores if s > 0.3),
+                "bearish_count": sum(1 for s in scores if s < -0.3),
+                "neutral_count": sum(1 for s in scores if -0.3 <= s <= 0.3),
+            },
         }
 
         return report
@@ -320,15 +304,17 @@ class SentimentLoadTest:
 
         print("\nSENTIMENT DISTRIBUTION:")
         print(f"  Mean Score:         {report['sentiment_distribution']['mean_score']:+.3f}")
-        print(f"  Score Range:        [{report['sentiment_distribution']['min_score']:+.3f}, "
-              f"{report['sentiment_distribution']['max_score']:+.3f}]")
+        print(
+            f"  Score Range:        [{report['sentiment_distribution']['min_score']:+.3f}, "
+            f"{report['sentiment_distribution']['max_score']:+.3f}]"
+        )
         print(f"  Bullish (>0.3):     {report['sentiment_distribution']['bullish_count']}")
         print(f"  Neutral:            {report['sentiment_distribution']['neutral_count']}")
         print(f"  Bearish (<-0.3):    {report['sentiment_distribution']['bearish_count']}")
 
         print("\n" + "=" * 80)
 
-    def save_report(self, report: Dict[str, Any], filename: str = 'sentiment_load_test_report.json'):
+    def save_report(self, report: Dict[str, Any], filename: str = "sentiment_load_test_report.json"):
         """
         Save report to file
 
@@ -336,8 +322,8 @@ class SentimentLoadTest:
             report: Report dictionary
             filename: Output filename
         """
-        filepath = os.path.join('tests', 'stress_tests', filename)
-        with open(filepath, 'w') as f:
+        filepath = os.path.join("tests", "stress_tests", filename)
+        with open(filepath, "w") as f:
             json.dump(report, f, indent=2)
         logger.info(f"Report saved to {filepath}")
 
@@ -346,17 +332,12 @@ def main():
     """Main execution"""
     import argparse
 
-    parser = argparse.ArgumentParser(description='Sentiment Analysis Load Testing')
-    parser.add_argument('--articles', type=int, default=100,
-                        help='Number of articles to process')
-    parser.add_argument('--workers', type=int, default=4,
-                        help='Number of parallel workers (recommend ≤4 for LLM)')
-    parser.add_argument('--mode', choices=['sequential', 'parallel', 'sustained'], default='parallel',
-                        help='Test mode')
-    parser.add_argument('--duration', type=int, default=300,
-                        help='Duration for sustained test (seconds)')
-    parser.add_argument('--rate', type=int, default=10,
-                        help='Article rate for sustained test (per minute)')
+    parser = argparse.ArgumentParser(description="Sentiment Analysis Load Testing")
+    parser.add_argument("--articles", type=int, default=100, help="Number of articles to process")
+    parser.add_argument("--workers", type=int, default=4, help="Number of parallel workers (recommend ≤4 for LLM)")
+    parser.add_argument("--mode", choices=["sequential", "parallel", "sustained"], default="parallel", help="Test mode")
+    parser.add_argument("--duration", type=int, default=300, help="Duration for sustained test (seconds)")
+    parser.add_argument("--rate", type=int, default=10, help="Article rate for sustained test (per minute)")
 
     args = parser.parse_args()
 
@@ -366,9 +347,9 @@ def main():
         tester.setup()
 
         # Run test based on mode
-        if args.mode == 'sequential':
+        if args.mode == "sequential":
             tester.test_sequential_processing(num_articles=args.articles)
-        elif args.mode == 'parallel':
+        elif args.mode == "parallel":
             tester.test_parallel_processing(num_articles=args.articles, max_workers=args.workers)
         else:  # sustained
             tester.test_sustained_load(duration_seconds=args.duration, rate_limit=args.rate)
