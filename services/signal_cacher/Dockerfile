@@ -2,22 +2,19 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
+# Install minimal runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
-COPY services/requirements.txt /app/services/requirements.txt
+COPY services/requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r /app/services/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
 COPY services/ /app/services/
 
-# Set Python path
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app PYTHONDONTWRITEBYTECODE=1
 
-# Default command
 CMD ["python", "-m", "services.signal_cacher.signal_cacher"]

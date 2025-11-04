@@ -48,7 +48,7 @@ class LLMSentimentStrategy(IStrategy):
     trailing_only_offset_is_reached = True
 
     # Timeframe
-    timeframe = "1h"
+    timeframe = "15m"
 
     # Startup candle count
     startup_candle_count: int = 50

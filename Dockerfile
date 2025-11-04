@@ -3,39 +3,29 @@ FROM python:3.10-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies and build TA-Lib from source
-RUN apt-get update && apt-get install -y \
-    build-essential \
+# Install system dependencies (minimal - no build tools for TA-Lib)
+RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    git \
-    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Build and install TA-Lib
-RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
-    tar -xzf ta-lib-0.4.0-src.tar.gz && \
-    cd ta-lib/ && \
-    ./configure --prefix=/usr && \
-    make && \
-    make install && \
-    cd .. && \
-    rm -rf ta-lib ta-lib-0.4.0-src.tar.gz
-
-# Copy requirements
+# Copy requirements first (layer caching optimization)
 COPY requirements.txt .
 
-# Install Python dependencies
+# Install Python dependencies (--no-cache-dir saves space)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy application code LAST (least frequently changing)
 COPY . .
 
 # Create necessary directories
-RUN mkdir -p data/ohlcv_data data/news_data logs backtest/backtest_reports
+RUN mkdir -p data/ohlcv_data data/news_data logs backtest/backtest_reports && \
+    # Clean cache to reduce image size
+    find /app -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV LOG_LEVEL=INFO
+ENV PYTHONDONTWRITEBYTECODE=1
 
 # Health check - verify Freqtrade API is responding
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \

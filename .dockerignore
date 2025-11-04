@@ -1,0 +1,74 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+docs/
+README.md
+QUICKSTART.md
+CLAUDE.md
+LICENSE
+
+# Development
+.vscode
+.idea
+*.pyc
+__pycache__
+.pytest_cache
+*.egg-info
+.env.example
+.editorconfig
+
+# Test & Logs
+logs/
+test_run_*.md
+*.log
+monitor_output.txt
+TEST_RUN_*.md
+
+# Data (can be large)
+data/news_data/
+data/ohlcv_data/
+backtest/backtest_reports/
+
+# Database backups
+*.sqlite.bak*
+*.db.bak*
+
+# OS
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+
+# Build artifacts
+dist/
+build/
+*.egg
+
+# Docker
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Batch files
+*.bat
+*.ps1
+
+# Configuration examples
+config/backtest_config.json.example
+
+# Node modules (if any frontend)
+node_modules/
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml

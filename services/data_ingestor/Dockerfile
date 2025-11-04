@@ -2,24 +2,22 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
+# Install minimal runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements
-COPY services/requirements.txt /app/services/requirements.txt
+COPY services/requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r /app/services/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy application code only (minimal)
 COPY services/ /app/services/
-COPY data/ /app/data/
 COPY llm/ /app/llm/
+RUN mkdir -p /app/data/ohlcv_data /app/data/news_data
 
-# Set Python path
-ENV PYTHONPATH=/app
+ENV PYTHONPATH=/app PYTHONDONTWRITEBYTECODE=1
 
-# Default command (can be overridden in docker-compose)
 CMD ["python", "-m", "services.data_ingestor.market_streamer"]
