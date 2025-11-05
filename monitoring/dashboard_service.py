@@ -158,10 +158,15 @@ class DashboardMetricsCollector:
                     score = float(data.get("score", 0.0))
                     timestamp_str = data.get("timestamp", "")
 
-                    # Calculate age
+                    # Calculate age (handle both naive and timezone-aware datetimes)
                     try:
                         ts = datetime.fromisoformat(timestamp_str)
-                        age_hours = (datetime.now() - ts).total_seconds() / 3600
+                        # Handle both naive and aware timestamps
+                        if ts.tzinfo is None:
+                            now = datetime.now()
+                        else:
+                            now = datetime.now(ts.tzinfo)
+                        age_hours = (now - ts).total_seconds() / 3600
                     except (ValueError, TypeError):
                         age_hours = 999
 
