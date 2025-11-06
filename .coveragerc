@@ -1,0 +1,24 @@
+# Coverage configuration for pytest
+# VoidCat RDC - CryptoBoy Trading Bot
+
+[run]
+source = .
+omit =
+    */tests/*
+    */test_*.py
+    */__pycache__/*
+    */venv/*
+    */env/*
+    */.venv/*
+    */user_data/*
+    */logs/*
+    */data/*
+    */backtest/backtest_reports/*
+
+[report]
+precision = 2
+show_missing = True
+skip_covered = False
+
+[html]
+directory = htmlcov
