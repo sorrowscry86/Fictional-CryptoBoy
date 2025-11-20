@@ -32,7 +32,9 @@ def redis_client(redis_config):
     # Cleanup - remove test keys
     try:
         client.delete('test:*')
-    except:
+    except Exception as e:
+        # Specific exception handling - cleanup failures are non-critical
+        logger.warning(f"Failed to clean up test keys in Redis: {e}")
         pass
 
 

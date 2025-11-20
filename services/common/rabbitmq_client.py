@@ -33,15 +33,25 @@ class RabbitMQClient:
         Args:
             host: RabbitMQ host (defaults to env RABBITMQ_HOST or 'rabbitmq')
             port: RabbitMQ port (defaults to env RABBITMQ_PORT or 5672)
-            username: RabbitMQ username (defaults to env RABBITMQ_USER or 'cryptoboy')
-            password: RabbitMQ password (defaults to env RABBITMQ_PASS or 'cryptoboy123')
+            username: RabbitMQ username (REQUIRED via env RABBITMQ_USER)
+            password: RabbitMQ password (REQUIRED via env RABBITMQ_PASS)
             max_retries: Maximum connection retry attempts
             retry_delay: Delay between retries in seconds
         """
         self.host = host or os.getenv("RABBITMQ_HOST", "rabbitmq")
         self.port = int(port or os.getenv("RABBITMQ_PORT", 5672))
-        self.username = username or os.getenv("RABBITMQ_USER", "cryptoboy")
-        self.password = password or os.getenv("RABBITMQ_PASS", "cryptoboy123")
+        
+        # SECURITY FIX: Removed default credentials - must be provided via environment
+        self.username = username or os.getenv("RABBITMQ_USER")
+        self.password = password or os.getenv("RABBITMQ_PASS")
+        
+        # Validate credentials are provided
+        if not self.username or not self.password:
+            raise ValueError(
+                "RabbitMQ credentials must be provided via RABBITMQ_USER and RABBITMQ_PASS "
+                "environment variables or constructor arguments. Default credentials removed for security."
+            )
+        
         self.max_retries = max_retries
         self.retry_delay = retry_delay
 

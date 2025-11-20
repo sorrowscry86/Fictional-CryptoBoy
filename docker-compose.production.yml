@@ -163,7 +163,9 @@ services:
     ports:
       - "8080:8080"  # API server
     healthcheck:
-      test: ["CMD", "curl", "-f", "-u", "${API_USERNAME}:${API_PASSWORD}", "http://localhost:8080/api/v1/ping"]
+      # SECURITY FIX: Use unauthenticated health endpoint instead of exposing credentials
+      # The /api/v1/health endpoint should be added to Freqtrade config (no auth required)
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/api/v1/health || curl -f http://localhost:8080/ || exit 1"]
       interval: 60s
       timeout: 10s
       retries: 3
@@ -185,13 +187,18 @@ services:
       - ./services/common:/app/services/common:ro
       - ./user_data:/app/user_data:ro
       - ./.env:/app/.env:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro  # Docker access for stats
+      # SECURITY FIX: Removed Docker socket mount (HIGH RISK)
+      # Alternative: Use Docker API with TLS authentication or sidecar pattern
+      # For container stats, use cAdvisor or Docker API with restricted permissions
+      # - /var/run/docker.sock:/var/run/docker.sock:ro  # REMOVED: Security vulnerability
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_USER=${RABBITMQ_USER:?RabbitMQ user not set}
       - RABBITMQ_PASS=${RABBITMQ_PASS:?RabbitMQ password not set}
+      # Add flag to disable Docker stats if socket unavailable
+      - ENABLE_DOCKER_STATS=false
     restart: unless-stopped
     networks:
       - trading-network

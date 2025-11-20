@@ -107,7 +107,12 @@ class TestSentimentProcessorIntegration:
         
         try:
             client.channel.start_consuming()
-        except:
+        except (KeyboardInterrupt, SystemExit):
+            # Allow graceful shutdown
+            raise
+        except Exception as e:
+            # Specific exception handling for consumer errors
+            logger.warning(f"Consumer stopped: {e}")
             pass
         
         client.close()

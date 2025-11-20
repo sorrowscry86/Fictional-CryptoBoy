@@ -35,7 +35,9 @@ def rabbitmq_client(rabbitmq_config):
     # Cleanup
     try:
         client.close()
-    except:
+    except Exception as e:
+        # Specific exception handling - avoiding bare except
+        logger.warning(f"Failed to close RabbitMQ client during cleanup: {e}")
         pass
 
 
