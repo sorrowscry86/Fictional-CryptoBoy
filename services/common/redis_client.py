@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 class RedisClient:
-    """Thread-safe Redis client with automatic reconnection"""
+    """Thread-safe Redis client with connection pooling and automatic reconnection"""
 
     def __init__(
         self,
@@ -27,9 +27,10 @@ class RedisClient:
         decode_responses: bool = True,
         max_retries: int = 5,
         retry_delay: int = 2,
+        max_connections: int = 50,
     ):
         """
-        Initialize Redis client
+        Initialize Redis client with connection pooling
 
         Args:
             host: Redis host (defaults to env REDIS_HOST or 'redis')
@@ -39,6 +40,7 @@ class RedisClient:
             decode_responses: Whether to decode responses to strings
             max_retries: Maximum connection retry attempts
             retry_delay: Delay between retries in seconds
+            max_connections: Maximum connections in the pool (default: 50)
         """
         self.host = host or os.getenv("REDIS_HOST", "redis")
         self.port = int(port or os.getenv("REDIS_PORT", 6379))
@@ -47,15 +49,18 @@ class RedisClient:
         self.decode_responses = decode_responses
         self.max_retries = max_retries
         self.retry_delay = retry_delay
+        self.max_connections = max_connections
 
+        self.pool: Optional[redis.ConnectionPool] = None
         self.client: Optional[redis.Redis] = None
         self._connect()
 
     def _connect(self) -> None:
-        """Establish connection to Redis with retry logic"""
+        """Establish connection pool to Redis with retry logic"""
         for attempt in range(self.max_retries):
             try:
-                self.client = redis.Redis(
+                # Create connection pool for efficient connection reuse
+                self.pool = redis.ConnectionPool(
                     host=self.host,
                     port=self.port,
                     db=self.db,
@@ -64,11 +69,18 @@ class RedisClient:
                     socket_connect_timeout=5,
                     socket_keepalive=True,
                     health_check_interval=30,
+                    max_connections=self.max_connections,
                 )
+
+                # Create Redis client using the connection pool
+                self.client = redis.Redis(connection_pool=self.pool)
 
                 # Test connection
                 self.client.ping()
-                logger.info(f"Successfully connected to Redis at {self.host}:{self.port}")
+                logger.info(
+                    f"Successfully connected to Redis at {self.host}:{self.port} "
+                    f"(pool size: {self.max_connections})"
+                )
                 return
 
             except (ConnectionError, TimeoutError) as e:
@@ -347,9 +359,13 @@ class RedisClient:
             return False
 
     def close(self) -> None:
-        """Close Redis connection"""
+        """Close Redis connection and connection pool"""
         if self.client:
             self.client.close()
+        if self.pool:
+            self.pool.disconnect()
+            logger.info("Redis connection pool closed")
+        else:
             logger.info("Redis connection closed")
 
 
