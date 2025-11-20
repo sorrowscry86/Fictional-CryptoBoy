@@ -15,13 +15,14 @@ Recommended Models:
 import torch
 from dotenv import load_dotenv
 from transformers import AutoModelForSequenceClassification, AutoTokenizer
+from typing import Optional, Dict
 
 load_dotenv()
 
 
 class HuggingFaceFinancialSentiment:
     """
-    Adapter for Hugging Face financial sentiment models.
+    Adapter for Hugging Face financial sentiment models with model caching.
 
     These models output:
     - positive (bullish)
@@ -29,6 +30,8 @@ class HuggingFaceFinancialSentiment:
     - negative (bearish)
 
     We convert to -1.0 to +1.0 scale for consistency.
+    
+    Uses singleton pattern to cache loaded models for efficient memory usage.
     """
 
     # Recommended models (in order of preference)
@@ -37,10 +40,13 @@ class HuggingFaceFinancialSentiment:
         "finbert-tone": "yiyanghkust/finbert-tone",  # Good alternative
         "distilroberta-financial": "mrm8488/distilroberta-finetuned-financial-news-sentiment-analysis",  # Fastest
     }
+    
+    # Class-level cache for models and tokenizers (singleton pattern)
+    _model_cache: Dict[str, tuple] = {}
 
     def __init__(self, model_name: str = "finbert"):
         """
-        Initialize the financial sentiment analyzer.
+        Initialize the financial sentiment analyzer with model caching.
 
         Args:
             model_name: Short name or full model path
@@ -53,23 +59,32 @@ class HuggingFaceFinancialSentiment:
         else:
             self.model_path = model_name
 
-        print(f"Loading financial sentiment model: {self.model_path}")
-        print("This may take a moment on first run (downloading model)...")
+        # Check if model is already cached
+        if self.model_path in self._model_cache:
+            print(f"✓ Using cached financial sentiment model: {self.model_path}")
+            self.tokenizer, self.model, self.device, self.id2label = self._model_cache[self.model_path]
+        else:
+            print(f"Loading financial sentiment model: {self.model_path}")
+            print("This may take a moment on first run (downloading model)...")
 
-        # Load model and tokenizer
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
-        self.model = AutoModelForSequenceClassification.from_pretrained(self.model_path)
+            # Load model and tokenizer
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_path)
+            self.model = AutoModelForSequenceClassification.from_pretrained(self.model_path)
 
-        # Use GPU if available
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model.to(self.device)
-        self.model.eval()  # Set to evaluation mode
+            # Use GPU if available
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.model.to(self.device)
+            self.model.eval()  # Set to evaluation mode
 
-        # Get label mapping
-        self.id2label = self.model.config.id2label
+            # Get label mapping
+            self.id2label = self.model.config.id2label
 
-        print(f"✓ Model loaded successfully on {self.device}")
-        print(f"  Labels: {list(self.id2label.values())}")
+            # Cache the loaded model
+            self._model_cache[self.model_path] = (self.tokenizer, self.model, self.device, self.id2label)
+
+            print(f"✓ Model loaded successfully on {self.device}")
+            print(f"  Labels: {list(self.id2label.values())}")
+            print(f"  Model cached for future use")
 
     def analyze_sentiment(self, text: str, return_probabilities: bool = False) -> float:
         """
@@ -131,6 +146,29 @@ class HuggingFaceFinancialSentiment:
             score = self.analyze_sentiment(text)
             scores.append(score)
         return scores
+    
+    @classmethod
+    def clear_model_cache(cls) -> None:
+        """
+        Clear the model cache to free up memory.
+        Useful when switching between different models or when memory is constrained.
+        """
+        if cls._model_cache:
+            print(f"Clearing {len(cls._model_cache)} cached model(s)")
+            cls._model_cache.clear()
+            print("✓ Model cache cleared")
+        else:
+            print("Model cache is already empty")
+    
+    @classmethod
+    def get_cached_models(cls) -> list:
+        """
+        Get list of currently cached model paths.
+        
+        Returns:
+            List of model paths in cache
+        """
+        return list(cls._model_cache.keys())
 
 
 class UnifiedSentimentAnalyzer:
