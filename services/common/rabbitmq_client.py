@@ -1,12 +1,13 @@
 """
 RabbitMQ Client for CryptoBoy Microservices
-Provides connection management and publishing/consuming utilities
+Provides connection management and publishing/consuming utilities with channel pooling
 """
 
 import json
 import logging
 import os
 import time
+from queue import Queue, Empty
 from typing import Any, Callable, Dict, Optional
 
 import pika
@@ -16,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class RabbitMQClient:
-    """Thread-safe RabbitMQ client with automatic reconnection"""
+    """Thread-safe RabbitMQ client with channel pooling and automatic reconnection"""
 
     def __init__(
         self,
@@ -26,9 +27,10 @@ class RabbitMQClient:
         password: str = None,
         max_retries: int = 5,
         retry_delay: int = 5,
+        channel_pool_size: int = 10,
     ):
         """
-        Initialize RabbitMQ client
+        Initialize RabbitMQ client with channel pooling
 
         Args:
             host: RabbitMQ host (defaults to env RABBITMQ_HOST or 'rabbitmq')
@@ -37,6 +39,7 @@ class RabbitMQClient:
             password: RabbitMQ password (REQUIRED via env RABBITMQ_PASS)
             max_retries: Maximum connection retry attempts
             retry_delay: Delay between retries in seconds
+            channel_pool_size: Maximum number of channels in the pool (default: 10)
         """
         self.host = host or os.getenv("RABBITMQ_HOST", "rabbitmq")
         self.port = int(port or os.getenv("RABBITMQ_PORT", 5672))
@@ -54,9 +57,12 @@ class RabbitMQClient:
         
         self.max_retries = max_retries
         self.retry_delay = retry_delay
+        self.channel_pool_size = channel_pool_size
 
         self.connection: Optional[pika.BlockingConnection] = None
         self.channel: Optional[pika.channel.Channel] = None
+        self._channel_pool: Queue = Queue(maxsize=channel_pool_size)
+        self._pool_initialized = False
 
     def connect(self) -> None:
         """Establish connection to RabbitMQ with retry logic"""
@@ -84,11 +90,56 @@ class RabbitMQClient:
                 else:
                     raise ConnectionError(f"Could not connect to RabbitMQ after {self.max_retries} attempts")
 
+    def _init_channel_pool(self) -> None:
+        """Initialize the channel pool with pre-created channels"""
+        if self._pool_initialized:
+            return
+        
+        try:
+            for _ in range(self.channel_pool_size):
+                if self.connection and not self.connection.is_closed:
+                    channel = self.connection.channel()
+                    self._channel_pool.put(channel)
+            
+            self._pool_initialized = True
+            logger.info(f"Initialized RabbitMQ channel pool with {self.channel_pool_size} channels")
+        except Exception as e:
+            logger.error(f"Failed to initialize channel pool: {e}")
+
+    def _get_channel_from_pool(self) -> Optional[pika.channel.Channel]:
+        """Get a channel from the pool, create new if pool is empty"""
+        try:
+            # Try to get from pool with timeout
+            channel = self._channel_pool.get(timeout=0.1)
+            
+            # Check if channel is still open
+            if channel.is_closed:
+                logger.debug("Got closed channel from pool, creating new one")
+                channel = self.connection.channel()
+            
+            return channel
+        except Empty:
+            # Pool is empty, create a new channel
+            if self.connection and not self.connection.is_closed:
+                logger.debug("Channel pool empty, creating new channel")
+                return self.connection.channel()
+            return None
+
+    def _return_channel_to_pool(self, channel: pika.channel.Channel) -> None:
+        """Return a channel to the pool if it's still open"""
+        if channel and not channel.is_closed:
+            try:
+                self._channel_pool.put_nowait(channel)
+            except Exception:
+                # Pool is full, close the channel
+                channel.close()
+
     def ensure_connection(self) -> None:
         """Ensure connection is active, reconnect if needed"""
         if self.connection is None or self.connection.is_closed:
             logger.info("Connection is closed, reconnecting...")
             self.connect()
+            self._init_channel_pool()
 
         if self.channel is None or self.channel.is_closed:
             logger.info("Channel is closed, recreating...")
@@ -185,11 +236,27 @@ class RabbitMQClient:
             logger.info("Stopped consuming messages")
 
     def close(self) -> None:
-        """Close channel and connection"""
+        """Close all channels in pool and connection"""
+        # Close all pooled channels
+        closed_count = 0
+        while not self._channel_pool.empty():
+            try:
+                channel = self._channel_pool.get_nowait()
+                if channel and not channel.is_closed:
+                    channel.close()
+                    closed_count += 1
+            except Empty:
+                break
+        
+        if closed_count > 0:
+            logger.info(f"Closed {closed_count} pooled channels")
+        
+        # Close main channel
         if self.channel and not self.channel.is_closed:
             self.channel.close()
-            logger.info("Channel closed")
+            logger.info("Main channel closed")
 
+        # Close connection
         if self.connection and not self.connection.is_closed:
             self.connection.close()
             logger.info("Connection closed")

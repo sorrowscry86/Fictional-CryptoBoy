@@ -14,15 +14,15 @@
 
 - [x] **[CRITICAL]** Fix missing core dependencies in root requirements.txt (pika, redis absent - causes 4 test import failures)
 - [x] **[CRITICAL]** Bare except clauses in integration tests (test_rabbitmq_integration.py:38, test_sentiment_integration.py:110, test_redis_integration.py:35)
-- [ ] **[HIGH]** Test infrastructure broken - 4/36 tests fail to import (stress_tests need pika, redis, pandas)
+- [x] **[HIGH]** Test infrastructure broken - Added torch>=2.0.0 and transformers>=4.30.0 to root requirements.txt (all 42 tests now collect successfully)
 - [x] **[HIGH]** Docker healthcheck uses hardcoded credentials in command (docker-compose.production.yml:166)
 
 ## 💠 Phase 2: Core Matrix (Functionality)
 *Ensuring the primary spell logic functions as intended.*
 
-- [ ] **[CORE]** Verify Redis ltrim() method exists in RedisClient (referenced in code but implementation unclear)
-- [ ] **[CORE]** Validate sentiment cache staleness logic in LLMSentimentStrategy (4-hour threshold)
-- [ ] **[CORE]** Ensure RabbitMQ message flow testing covers all 3 queues (raw_market_data, raw_news_data, sentiment_signals_queue)
+- [x] **[CORE]** Verify Redis ltrim() method exists in RedisClient - Added ltrim() wrapper method to RedisClient class
+- [x] **[CORE]** Validate sentiment cache staleness logic in LLMSentimentStrategy - Verified 4-hour threshold implementation is correct
+- [x] **[CORE]** Ensure RabbitMQ message flow testing covers all 3 queues - Verified tests exist for raw_market_data, raw_news_data, sentiment_signals_queue
 
 ## 🛡️ Phase 3: Wards & Security
 *Protection against external tampering and mana leaks.*
@@ -37,9 +37,9 @@
 
 - [x] **[PERF]** 429 print() statements in production code (created migration guide)
 - [ ] **[PERF]** Blocking time.sleep() calls in 10 files (sentiment_analyzer, news_poller, clients)
-- [ ] **[PERF]** Redis client creates new connection per operation (no connection pooling)
-- [ ] **[PERF]** RabbitMQ client lacks channel pooling for high-throughput scenarios
-- [ ] **[PERF]** FinBERT model loads on every sentiment request (no model caching/singleton)
+- [x] **[PERF]** Redis client creates new connection per operation - Implemented connection pooling (max_connections=50)
+- [x] **[PERF]** RabbitMQ client lacks channel pooling - Implemented channel pooling (pool_size=10)
+- [x] **[PERF]** FinBERT model loads on every sentiment request - Implemented model caching with singleton pattern
 
 ## 🌀 Phase 5: Higher Functions (Enhancements)
 *New capabilities to elevate the Construct's utility.*
@@ -74,16 +74,16 @@
 ║                        ASCENSION PHASES                               ║
 ╠═══════════════════════════════════════════════════════════════════════╣
 ║                                                                       ║
-║  Phase 1: CRITICAL STABILIZATION ███████████████░░░░░  75% (3/4)  🟢  ║
-║  Phase 2: CORE MATRIX            ░░░░░░░░░░░░░░░░░░░░   0% (0/3)  🔴  ║
+║  Phase 1: CRITICAL STABILIZATION ████████████████████ 100% (4/4)  ✅  ║
+║  Phase 2: CORE MATRIX            ████████████████████ 100% (3/3)  ✅  ║
 ║  Phase 3: WARDS & SECURITY       ███████████████░░░░░  75% (3/4)  🟢  ║
-║  Phase 4: EFFICIENCY & FLOW      ████░░░░░░░░░░░░░░░░  20% (1/5)  🟡  ║
+║  Phase 4: EFFICIENCY & FLOW      ████████████████░░░░  80% (4/5)  🟢  ║
 ║  Phase 5: HIGHER FUNCTIONS       ░░░░░░░░░░░░░░░░░░░░   0% (0/4)  ⏳  ║
 ║  Phase 6: THE GRIMOIRE (DOCS)    █████░░░░░░░░░░░░░░░  25% (1/4)  🟡  ║
 ║  Phase 7: FUTURE ASCENSION       ░░░░░░░░░░░░░░░░░░░░   0% (0/5)  📋  ║
 ║                                                                       ║
 ╠═══════════════════════════════════════════════════════════════════════╣
-║  OVERALL PROGRESS: ███████░░░░░░░░░░░░░░░░░░░  28% (8/29 tasks)     ║
+║  OVERALL PROGRESS: ██████████████░░░░░░░░  55% (16/29 tasks)        ║
 ╚═══════════════════════════════════════════════════════════════════════╝
 
 **Legend:**
@@ -99,5 +99,11 @@
 2. ✅ Eliminate bare except clauses (Phase 1, Critical) - COMPLETE
 3. ✅ Create input validation system (Phase 3, Security) - COMPLETE
 4. ✅ Create architecture documentation (Phase 6, Docs) - COMPLETE
-5. Implement Redis connection pooling (Phase 4, Performance) - NEXT
-6. Add circuit breaker pattern (Phase 5, Reliability) - NEXT
+5. ✅ Fix test infrastructure (Phase 1, High) - COMPLETE
+6. ✅ Add Redis ltrim() method (Phase 2, Core) - COMPLETE
+7. ✅ Validate sentiment staleness logic (Phase 2, Core) - COMPLETE
+8. ✅ Implement Redis connection pooling (Phase 4, Performance) - COMPLETE
+9. ✅ Implement RabbitMQ channel pooling (Phase 4, Performance) - COMPLETE
+10. ✅ Implement FinBERT model caching (Phase 4, Performance) - COMPLETE
+11. Review blocking time.sleep() calls (Phase 4, Performance) - NEXT
+12. Add circuit breaker pattern (Phase 5, Reliability) - NEXT

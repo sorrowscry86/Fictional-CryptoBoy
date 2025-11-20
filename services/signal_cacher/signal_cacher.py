@@ -138,7 +138,7 @@ class SignalCacher:
 
             # Keep only last 100 entries
             # Trim list to 100 elements
-            self.redis.client.ltrim(history_key, 0, 99)
+            self.redis.ltrim(history_key, 0, 99)
 
         except Exception as e:
             logger.warning(f"Failed to update history for {pair}: {e}")
