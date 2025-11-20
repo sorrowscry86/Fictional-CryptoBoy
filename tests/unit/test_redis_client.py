@@ -92,6 +92,22 @@ class TestRedisClient(unittest.TestCase):
         assert result == ['key1', 'key2']
         mock_redis_instance.keys.assert_called_once()
 
+    @patch('services.common.redis_client.redis')
+    def test_ltrim(self, mock_redis):
+        """Test trimming a list"""
+        from services.common.redis_client import RedisClient
+        
+        mock_redis_instance = MagicMock()
+        mock_redis.Redis.return_value = mock_redis_instance
+        mock_redis_instance.ping.return_value = True
+        mock_redis_instance.ltrim.return_value = True
+        
+        client = RedisClient()
+        result = client.ltrim('test_list', 0, 99)
+        
+        assert result is True
+        mock_redis_instance.ltrim.assert_called_once_with('test_list', 0, 99)
+
 
 class TestRedisClientIntegration:
     """Integration-style tests for Redis client (requires actual service)"""
