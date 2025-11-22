@@ -24,6 +24,8 @@ from aiohttp import web
 # Ensure we can import project-local modules whether run as module or script
 try:
     from services.common.logging_config import setup_logging
+    from monitoring.strategy_monitor import StrategyStateMonitor
+    from monitoring.manual_trade_controller import ManualTradeController
 
     project_root = Path(__file__).parent.parent
 except ImportError:  # noqa: E402
@@ -32,6 +34,8 @@ except ImportError:  # noqa: E402
     project_root = Path(__file__).parent.parent  # noqa: E402
     sys.path.insert(0, str(project_root))  # noqa: E402
     from services.common.logging_config import setup_logging  # noqa: E402
+    from monitoring.strategy_monitor import StrategyStateMonitor  # noqa: E402
+    from monitoring.manual_trade_controller import ManualTradeController  # noqa: E402
 
 logger = setup_logging("dashboard-service")
 
@@ -71,6 +75,21 @@ class DashboardMetricsCollector:
 
         # Initialize Redis connection
         self._connect_redis()
+
+        # Initialize strategy monitor and trade controller
+        self.strategy_monitor = None
+        self.trade_controller = None
+        try:
+            self.strategy_monitor = StrategyStateMonitor()
+            logger.info("Strategy State Monitor initialized")
+        except Exception as e:
+            logger.error(f"Failed to initialize Strategy Monitor: {e}")
+
+        try:
+            self.trade_controller = ManualTradeController()
+            logger.info("Manual Trade Controller initialized (DRY_RUN mode verified)")
+        except Exception as e:
+            logger.warning(f"Manual Trade Controller not available: {e}")
 
         logger.info("Dashboard Metrics Collector initialized")
 
@@ -297,6 +316,28 @@ class DashboardMetricsCollector:
             logger.error(f"Failed to collect trading metrics: {e}")
             return {"error": str(e)}
 
+    async def collect_strategy_state(self) -> Dict[str, Any]:
+        """
+        Collect strategy entry condition state for all pairs.
+
+        Provides real-time visibility into why trades are/aren't executing.
+        """
+        if not self.strategy_monitor:
+            return {"error": "Strategy monitor not initialized"}
+
+        try:
+            # Get status for all pairs
+            all_pairs_status = self.strategy_monitor.get_all_pairs_status()
+
+            return {
+                "pairs": all_pairs_status,
+                "timestamp": datetime.utcnow().isoformat(),
+            }
+
+        except Exception as e:
+            logger.error(f"Failed to collect strategy state: {e}")
+            return {"error": str(e)}
+
     async def collect_all_metrics(self) -> Dict[str, Any]:
         """Collect all metrics from all sources"""
         logger.debug("Collecting all metrics...")
@@ -306,6 +347,7 @@ class DashboardMetricsCollector:
             "redis": await self.collect_redis_metrics(),
             "rabbitmq": await self.collect_rabbitmq_metrics(),
             "trading": await self.collect_trading_metrics(),
+            "strategy_state": await self.collect_strategy_state(),
             "collection_timestamp": datetime.utcnow().isoformat(),
         }
 
@@ -402,6 +444,12 @@ class DashboardServer:
         self.app.router.add_get("/ws", self.handle_websocket)
         self.app.router.add_get("/metrics", self.handle_metrics)
 
+        # Manual trade control endpoints
+        self.app.router.add_post("/api/force_buy", self.handle_force_buy)
+        self.app.router.add_post("/api/force_sell", self.handle_force_sell)
+        self.app.router.add_get("/api/open_trades", self.handle_get_open_trades)
+        self.app.router.add_get("/api/audit_log", self.handle_get_audit_log)
+
     async def handle_index(self, request):
         """Serve dashboard HTML"""
         html_path = project_root / "monitoring" / "dashboard.html"
@@ -418,6 +466,138 @@ class DashboardServer:
         """REST endpoint for current metrics"""
         metrics = await self.collector.collect_all_metrics()
         return web.json_response(metrics)
+
+    async def handle_force_buy(self, request):
+        """
+        Force a buy trade via Freqtrade API (DRY_RUN only).
+
+        Expected POST body:
+        {
+            "pair": "BTC/USDT",
+            "amount_usdt": 100,
+            "inject_sentiment": true,
+            "sentiment_score": 0.85
+        }
+        """
+        if not self.collector.trade_controller:
+            return web.json_response(
+                {"error": "Manual trade controller not available"},
+                status=503
+            )
+
+        try:
+            data = await request.json()
+            pair = data.get("pair")
+            amount_usdt = data.get("amount_usdt", 100.0)
+            inject_sentiment = data.get("inject_sentiment", True)
+            sentiment_score = data.get("sentiment_score", 0.85)
+
+            if not pair:
+                return web.json_response(
+                    {"error": "Missing required parameter: pair"},
+                    status=400
+                )
+
+            # Execute force buy
+            result = self.collector.trade_controller.force_buy(
+                pair=pair,
+                amount_usdt=amount_usdt,
+                inject_sentiment=inject_sentiment,
+                sentiment_score=sentiment_score
+            )
+
+            logger.info(f"Manual force buy executed for {pair}")
+            return web.json_response({"success": True, "result": result})
+
+        except Exception as e:
+            logger.error(f"Force buy failed: {e}")
+            return web.json_response(
+                {"error": str(e)},
+                status=500
+            )
+
+    async def handle_force_sell(self, request):
+        """
+        Force sell an open trade via Freqtrade API (DRY_RUN only).
+
+        Expected POST body:
+        {
+            "trade_id": 123,
+            "pair": "BTC/USDT"
+        }
+        """
+        if not self.collector.trade_controller:
+            return web.json_response(
+                {"error": "Manual trade controller not available"},
+                status=503
+            )
+
+        try:
+            data = await request.json()
+            trade_id = data.get("trade_id")
+            pair = data.get("pair")
+
+            if not trade_id:
+                return web.json_response(
+                    {"error": "Missing required parameter: trade_id"},
+                    status=400
+                )
+
+            # Execute force sell
+            result = self.collector.trade_controller.force_sell(
+                trade_id=int(trade_id),
+                pair=pair
+            )
+
+            logger.info(f"Manual force sell executed for trade_id={trade_id}")
+            return web.json_response({"success": True, "result": result})
+
+        except Exception as e:
+            logger.error(f"Force sell failed: {e}")
+            return web.json_response(
+                {"error": str(e)},
+                status=500
+            )
+
+    async def handle_get_open_trades(self, request):
+        """Get list of currently open trades"""
+        if not self.collector.trade_controller:
+            return web.json_response(
+                {"error": "Manual trade controller not available"},
+                status=503
+            )
+
+        try:
+            trades = self.collector.trade_controller.get_open_trades()
+            return web.json_response({"trades": trades})
+
+        except Exception as e:
+            logger.error(f"Failed to get open trades: {e}")
+            return web.json_response(
+                {"error": str(e)},
+                status=500
+            )
+
+    async def handle_get_audit_log(self, request):
+        """Get manual trade audit log"""
+        if not self.collector.trade_controller:
+            return web.json_response(
+                {"error": "Manual trade controller not available"},
+                status=503
+            )
+
+        try:
+            # Get limit from query params
+            limit = int(request.query.get("limit", 20))
+            audit_log = self.collector.trade_controller.get_audit_log(limit=limit)
+            return web.json_response({"audit_log": audit_log})
+
+        except Exception as e:
+            logger.error(f"Failed to get audit log: {e}")
+            return web.json_response(
+                {"error": str(e)},
+                status=500
+            )
 
     async def handle_websocket(self, request):
         """WebSocket handler for real-time updates"""

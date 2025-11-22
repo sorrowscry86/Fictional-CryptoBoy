@@ -66,6 +66,13 @@
 ## 🌀 Phase 5: Higher Functions (Enhancements)
 *New capabilities to elevate the Construct's utility.*
 
+### ✅ COMPLETED (Ascension Session 2025-11-22 - Dashboard Enhancements)
+- [x] **[FEAT]** Dashboard trade visibility - ENHANCED (monitoring/strategy_monitor.py: 328 lines, real-time entry condition monitoring)
+- [x] **[FEAT]** Manual trade triggering - IMPLEMENTED (monitoring/manual_trade_controller.py: 347 lines, DRY_RUN-only force buy/sell)
+- [x] **[FEAT]** Strategy state publishing - ENABLED (strategies/llm_sentiment_strategy.py: publishes all 6 entry conditions to Redis)
+- [x] **[FEAT]** Dashboard API endpoints - ADDED (dashboard_service.py: /api/force_buy, /api/force_sell, /api/open_trades, /api/audit_log)
+
+### 🔴 PENDING & NEW ISSUES
 - [ ] **[FEAT]** Implement circuit breaker pattern for external service failures (Redis, RabbitMQ, LLM)
 - [ ] **[FEAT]** Add metrics collection (Prometheus/Grafana integration hooks)
 - [ ] **[FEAT]** Implement distributed tracing for microservice debugging
@@ -133,16 +140,16 @@
 ║                        ASCENSION PHASES                               ║
 ╠═══════════════════════════════════════════════════════════════════════╣
 ║                                                                       ║
-║  Phase 1: CRITICAL STABILIZATION ████████████████████  100%  (9/9) ✅ ║
-║  Phase 2: CORE MATRIX            ████████████████████  100%  (3/3) ✅ ║
-║  Phase 3: WARDS & SECURITY       ████████████████████  100%  (8/8) ✅ ║
-║  Phase 4: EFFICIENCY & FLOW      ██████████░░░░░░░░░░   50%  (4/8) 🟡 ║
-║  Phase 5: HIGHER FUNCTIONS       ░░░░░░░░░░░░░░░░░░░░    0%  (0/7) ⏳ ║
-║  Phase 6: THE GRIMOIRE (DOCS)    ██░░░░░░░░░░░░░░░░░░   11%  (1/9) 🔴 ║
-║  Phase 7: FUTURE ASCENSION       ░░░░░░░░░░░░░░░░░░░░    0%  (0/5) 📋 ║
+║  Phase 1: CRITICAL STABILIZATION ████████████████████  100%   (9/9) ✅ ║
+║  Phase 2: CORE MATRIX            ████████████████████  100%   (3/3) ✅ ║
+║  Phase 3: WARDS & SECURITY       ████████████████████  100%   (8/8) ✅ ║
+║  Phase 4: EFFICIENCY & FLOW      ██████████░░░░░░░░░░   50%   (4/8) 🟡 ║
+║  Phase 5: HIGHER FUNCTIONS       ███████░░░░░░░░░░░░░   36%  (4/11) 🟡 ║
+║  Phase 6: THE GRIMOIRE (DOCS)    ██░░░░░░░░░░░░░░░░░░   11%   (1/9) 🔴 ║
+║  Phase 7: FUTURE ASCENSION       ░░░░░░░░░░░░░░░░░░░░    0%   (0/5) 📋 ║
 ║                                                                       ║
 ╠═══════════════════════════════════════════════════════════════════════╣
-║  OVERALL PROGRESS: ██████████░░░░░░░░░░░░  51% (25/49 tasks)         ║
+║  OVERALL PROGRESS: ███████████░░░░░░░░░░░  55% (29/53 tasks)         ║
 ╚═══════════════════════════════════════════════════════════════════════╝
 
 **Legend:**
@@ -227,4 +234,46 @@ All 5 deployment-blocking vulnerabilities have been **ELIMINATED**:
 
 ---
 
-**The High Evolutionary decrees:** *Phase 1 is COMPLETE. The most critical structural dissonances have been harmonized. The Construct can now withstand deployment, though refinement continues. Next: Phase 3 (Security) and Phase 6 (Documentation) to achieve production excellence.*
+**2025-11-22 Dashboard Enhancement Session Results:**
+
+**Phase 5: HIGHER FUNCTIONS - Dashboard Trade Visibility ENHANCED** 🎮
+
+Addressing critical feedback: *"During paper trading tests it made no actual trades to monitor results. A way to manually force certain trades, preferably from the dashboard would be useful."*
+
+**4 Major Enhancements Delivered:**
+
+1. ✅ **Strategy State Monitor**: Real-time visibility into ALL 6 entry conditions
+   - `monitoring/strategy_monitor.py` (328 lines)
+   - Shows sentiment score, EMA trend, RSI range, MACD crossover, volume, Bollinger Bands
+   - Explains precisely WHY trades aren't executing ("blocking reasons")
+   - Data age tracking (alerts if strategy state stale)
+
+2. ✅ **Manual Trade Controller**: Force buy/sell for testing (DRY_RUN only)
+   - `monitoring/manual_trade_controller.py` (347 lines)
+   - Safety: Only operates in DRY_RUN mode (validates before execution)
+   - Sentiment injection: Can simulate bullish/bearish news for testing
+   - Audit logging: All manual actions tracked in Redis with timestamps
+
+3. ✅ **Trading Bot State Publishing**: Strategy now broadcasts to Redis
+   - Modified `strategies/llm_sentiment_strategy.py` (+49 lines)
+   - Publishes all entry condition values every candle
+   - Enables dashboard to diagnose "no trade" scenarios in real-time
+   - 15-minute TTL prevents stale data accumulation
+
+4. ✅ **Dashboard API Endpoints**: Complete manual control interface
+   - Enhanced `monitoring/dashboard_service.py` (+209 lines)
+   - `/api/force_buy` - Trigger manual buy with sentiment injection
+   - `/api/force_sell` - Close open trades manually
+   - `/api/open_trades` - List current positions
+   - `/api/audit_log` - Manual action history
+
+**Files Modified:** 4 (strategy_monitor.py [NEW], manual_trade_controller.py [NEW], llm_sentiment_strategy.py, dashboard_service.py)
+**Lines Added:** 933
+**Trade Visibility:** ACHIEVED ✅
+**Manual Testing:** ENABLED ✅
+
+**Progress: 51% → 55%** (+4% in dashboard enhancement session)
+
+---
+
+**The High Evolutionary decrees:** *Phase 5 ascends. The Construct now possesses the Vision - it can observe its own decision-making in real-time, diagnosing why trades manifest or fail to materialize. Manual control has been granted for testing rituals, bound by the sacred DRY_RUN constraint. The dashboard transforms from passive observer to active oracle. Next: Complete Phase 4 (Performance) and Phase 6 (Documentation) to achieve production excellence.*

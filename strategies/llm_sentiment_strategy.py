@@ -204,6 +204,56 @@ class LLMSentimentStrategy(IStrategy):
         logger.debug(f"Populated indicators for {pair}")
         return dataframe
 
+    def _publish_strategy_state(self, dataframe: DataFrame, pair: str) -> None:
+        """
+        Publish current strategy state to Redis for dashboard monitoring.
+
+        Enables real-time visibility into why trades are/aren't executing.
+        Publishes all 6 entry conditions with current values.
+
+        Args:
+            dataframe: DataFrame with indicators
+            pair: Trading pair
+        """
+        if not self.redis_client:
+            return
+
+        try:
+            # Get most recent candle data
+            last_row = dataframe.iloc[-1]
+
+            # Extract all entry condition values
+            state_data = {
+                "pair": pair,
+                "sentiment_score": str(last_row.get("sentiment", 0.0)),
+                "ema_12": str(last_row.get("ema_short", 0.0)),
+                "ema_26": str(last_row.get("ema_long", 0.0)),
+                "rsi": str(last_row.get("rsi", 50.0)),
+                "macd": str(last_row.get("macd", 0.0)),
+                "macd_signal": str(last_row.get("macdsignal", 0.0)),
+                "volume": str(last_row.get("volume", 0.0)),
+                "volume_avg": str(last_row.get("volume_mean", 0.0)),
+                "price": str(last_row.get("close", 0.0)),
+                "bb_upper": str(last_row.get("bb_upper", 0.0)),
+                "bb_middle": str(last_row.get("bb_middle", 0.0)),
+                "bb_lower": str(last_row.get("bb_lower", 0.0)),
+                "last_updated": datetime.utcnow().isoformat(),
+            }
+
+            # Publish to Redis
+            key = f"strategy_state:{pair}"
+            for field, value in state_data.items():
+                self.redis_client.hset(key, field, value)
+
+            # Set expiration (15 minutes) to prevent stale data
+            self.redis_client.expire(key, 900)
+
+            logger.debug(f"Published strategy state for {pair} to Redis")
+
+        except Exception as e:
+            logger.error(f"Failed to publish strategy state for {pair}: {e}")
+            # Don't raise - state publishing shouldn't block trading
+
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         """
         Define buy conditions
@@ -228,6 +278,10 @@ class LLMSentimentStrategy(IStrategy):
             ),
             "enter_long",
         ] = 1
+
+        # Publish strategy state to Redis for dashboard monitoring
+        pair = metadata.get("pair", "UNKNOWN")
+        self._publish_strategy_state(dataframe, pair)
 
         return dataframe
 
