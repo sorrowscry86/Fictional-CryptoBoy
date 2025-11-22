@@ -93,14 +93,59 @@ class SentimentProcessor:
 
     @staticmethod
     def _parse_trading_pairs(pairs_str: str) -> Dict[str, List[str]]:
-        """Parse trading pairs from environment variable"""
+        """
+        Parse and validate trading pairs from environment variable.
+
+        Security: Validates format to prevent injection of malicious strings
+        into Redis keys or message payloads.
+
+        Args:
+            pairs_str: Comma-separated trading pairs (e.g., "BTC/USDT,ETH/USDT")
+
+        Returns:
+            Dictionary mapping pair to keywords {" BTC/USDT": ["btc"], ...}
+
+        Raises:
+            ValueError: If any pair has invalid format
+        """
+        # Regex pattern: 3-5 uppercase letters, slash, 3-5 uppercase letters
+        # Example: BTC/USDT, MATIC/USDT, SHIB/USDT
+        TRADING_PAIR_PATTERN = re.compile(r"^[A-Z]{3,5}/[A-Z]{3,5}$")
+
         pairs = {}
+        skipped = []
+
         for pair in pairs_str.split(","):
             pair = pair.strip()
-            if "/" in pair:
-                # Extract base currency keywords
-                base = pair.split("/")[0].lower()
-                pairs[pair] = [base]
+
+            if not pair:  # Skip empty strings
+                continue
+
+            # Validate format with regex
+            if not TRADING_PAIR_PATTERN.match(pair):
+                logger.warning(
+                    f"Skipping invalid trading pair format: '{pair}' "
+                    f"(expected format: XXX/YYY where X,Y are 3-5 uppercase letters)"
+                )
+                skipped.append(pair)
+                continue
+
+            # Extract base currency keywords
+            base = pair.split("/")[0].lower()
+            pairs[pair] = [base]
+            logger.debug(f"Parsed trading pair: {pair} (keywords: [{base}])")
+
+        if skipped:
+            logger.warning(
+                f"Skipped {len(skipped)} invalid trading pairs: {', '.join(skipped)}"
+            )
+
+        if not pairs:
+            raise ValueError(
+                f"No valid trading pairs found in: '{pairs_str}'. "
+                f"Expected format: BTC/USDT,ETH/USDT (3-5 uppercase letters each side)"
+            )
+
         return pairs
 
     def _test_connection(self):
