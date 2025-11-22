@@ -68,8 +68,8 @@ services:
     environment:
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
-      - RABBITMQ_USER=${RABBITMQ_USER:-cryptoboy}
-      - RABBITMQ_PASS=${RABBITMQ_PASS:-cryptoboy123}
+      - RABBITMQ_USER=${RABBITMQ_USER:?RabbitMQ user not set}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:?RabbitMQ password not set}
       - BINANCE_API_KEY=${BINANCE_API_KEY}
       - BINANCE_API_SECRET=${BINANCE_API_SECRET}
     restart: unless-stopped
@@ -86,8 +86,8 @@ services:
     environment:
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
-      - RABBITMQ_USER=${RABBITMQ_USER:-cryptoboy}
-      - RABBITMQ_PASS=${RABBITMQ_PASS:-cryptoboy123}
+      - RABBITMQ_USER=${RABBITMQ_USER:?RabbitMQ user not set}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:?RabbitMQ password not set}
     command: python -m services.data_ingestor.news_poller
     restart: unless-stopped
     networks:
@@ -104,8 +104,8 @@ services:
     environment:
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
-      - RABBITMQ_USER=${RABBITMQ_USER:-cryptoboy}
-      - RABBITMQ_PASS=${RABBITMQ_PASS:-cryptoboy123}
+      - RABBITMQ_USER=${RABBITMQ_USER:?RabbitMQ user not set}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:?RabbitMQ password not set}
       - OLLAMA_HOST=http://ollama:11434
       - OLLAMA_MODEL=phi3:mini
     restart: unless-stopped
@@ -123,8 +123,8 @@ services:
     environment:
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
-      - RABBITMQ_USER=${RABBITMQ_USER:-cryptoboy}
-      - RABBITMQ_PASS=${RABBITMQ_PASS:-cryptoboy123}
+      - RABBITMQ_USER=${RABBITMQ_USER:?RabbitMQ user not set}
+      - RABBITMQ_PASS=${RABBITMQ_PASS:?RabbitMQ password not set}
       - REDIS_HOST=redis
       - REDIS_PORT=6379
     restart: unless-stopped

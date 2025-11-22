@@ -18,6 +18,12 @@ from services.common.rabbitmq_client import RabbitMQClient, create_consumer_call
 logger = setup_logging("sentiment-processor")
 
 
+class SentimentAnalysisError(Exception):
+    """Custom exception for sentiment analysis failures"""
+
+    pass
+
+
 class SentimentProcessor:
     """
     Sentiment analysis service that processes news articles from RabbitMQ
@@ -160,6 +166,54 @@ class SentimentProcessor:
         else:
             return "neutral"
 
+    def _fallback_sentiment_analysis(self, text: str) -> float:
+        """
+        Fallback sentiment analysis using simple keyword matching.
+        Used when FinBERT fails to prevent pipeline collapse.
+
+        Args:
+            text: Text to analyze
+
+        Returns:
+            Sentiment score (-1.0 to 1.0) based on keyword heuristics
+
+        Note:
+            This is a CRUDE fallback for resilience. FinBERT is far superior.
+            Logs warning when fallback is used.
+        """
+        text_lower = text.lower()
+
+        # Bullish keywords
+        bullish = [
+            "surge", "rally", "gain", "increase", "rise", "bullish", "adoption",
+            "breakout", "high", "record", "institutional", "approval", "upgrade"
+        ]
+
+        # Bearish keywords
+        bearish = [
+            "crash", "drop", "fall", "decline", "bearish", "sell-off", "plunge",
+            "loss", "fraud", "hack", "regulation", "ban", "concern"
+        ]
+
+        # Count keyword matches
+        bullish_count = sum(1 for word in bullish if word in text_lower)
+        bearish_count = sum(1 for word in bearish if word in text_lower)
+
+        # Calculate simple score
+        if bullish_count == 0 and bearish_count == 0:
+            score = 0.0  # Neutral
+        else:
+            score = (bullish_count - bearish_count) / (bullish_count + bearish_count + 1)
+            # Clamp to [-1, 1]
+            score = max(-1.0, min(1.0, score))
+
+        logger.warning(
+            f"FALLBACK SENTIMENT USED (FinBERT unavailable): "
+            f"score={score:.2f} (bullish={bullish_count}, bearish={bearish_count})"
+        )
+
+        return score
+
     def _process_news_article(self, news_data: Dict[str, Any]) -> None:
         """
         Process a single news article: analyze sentiment and publish signal
@@ -180,14 +234,54 @@ class SentimentProcessor:
 
             logger.info(f"Processing article from {source}: {title[:60]}...")
 
-            # Perform sentiment analysis with FinBERT
+            # Perform sentiment analysis with FinBERT (with fallback)
             # Combine title and content snippet for better context
             text_to_analyze = f"{title}. {content[:500]}"
-            sentiment_score = self.analyzer.analyze_sentiment(text_to_analyze)
+
+            # Try primary oracle (FinBERT)
+            sentiment_score = None
+            model_used = "finbert"
+
+            try:
+                sentiment_score = self.analyzer.analyze_sentiment(text_to_analyze)
+
+                if sentiment_score is None:
+                    logger.warning("FinBERT returned None - attempting fallback")
+                    raise SentimentAnalysisError("FinBERT returned None score")
+
+            except Exception as e:
+                logger.error(
+                    f"Primary sentiment analysis (FinBERT) failed for article {article_id}: {e}",
+                    exc_info=False,  # Don't spam logs with full traceback
+                )
+
+                # Graceful degradation: Use fallback keyword analysis
+                try:
+                    sentiment_score = self._fallback_sentiment_analysis(text_to_analyze)
+                    model_used = "fallback_keywords"
+                    logger.info(
+                        f"Fallback sentiment analysis succeeded: score={sentiment_score:+.2f}"
+                    )
+
+                except Exception as fallback_error:
+                    # Even fallback failed - use neutral score to prevent pipeline collapse
+                    logger.error(
+                        f"Fallback sentiment analysis also failed: {fallback_error}",
+                        exc_info=True,
+                    )
+                    sentiment_score = 0.0  # Neutral score
+                    model_used = "neutral_default"
+                    logger.warning(
+                        f"Using neutral default score (0.0) for article {article_id} "
+                        f"to prevent pipeline collapse"
+                    )
 
             sentiment_label = self._classify_sentiment(sentiment_score)
 
-            logger.info(f"Sentiment analysis complete: {sentiment_label} " f"(score: {sentiment_score:+.2f})")
+            logger.info(
+                f"Sentiment analysis complete ({model_used}): {sentiment_label} "
+                f"(score: {sentiment_score:+.2f})"
+            )
 
             # Match to trading pairs
             matched_pairs = self._match_article_to_pairs(title, content)
@@ -210,7 +304,8 @@ class SentimentProcessor:
                     "sentiment_label": sentiment_label,
                     "published": published,
                     "analyzed_at": datetime.utcnow().isoformat(),
-                    "model": getattr(self.analyzer, "model_path", "FinBERT"),
+                    "model": model_used,  # Track which model was actually used
+                    "fallback_used": model_used != "finbert",  # Flag if fallback was triggered
                 }
 
                 # Publish to output queue
@@ -219,8 +314,15 @@ class SentimentProcessor:
                 logger.info(f"Published signal for {pair}: {sentiment_label} (score: {sentiment_score:+.2f})")
 
         except Exception as e:
-            logger.error(f"Error processing news article: {e}", exc_info=True)
-            raise  # Re-raise to trigger message requeue
+            # Catch unexpected errors (not sentiment analysis failures - those are handled above)
+            # Log but DON'T re-raise to avoid message requeue loop
+            logger.error(
+                f"Unexpected error processing article: {e}",
+                exc_info=True,
+                extra={"article_id": news_data.get("article_id", "unknown")},
+            )
+            # Note: Message will be ACKed and not requeued to prevent poison pill messages
+            # Sentiment analysis failures are handled gracefully above with fallback
 
     def run(self):
         """Start consuming news articles and processing sentiment"""

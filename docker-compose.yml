@@ -37,8 +37,8 @@ services:
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq/
     environment:
-      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:-cryptoboy}
-      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:-cryptoboy123}
+      - RABBITMQ_DEFAULT_USER=${RABBITMQ_USER:?RabbitMQ user not set in .env}
+      - RABBITMQ_DEFAULT_PASS=${RABBITMQ_PASS:?RabbitMQ password not set in .env}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]

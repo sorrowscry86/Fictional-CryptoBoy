@@ -39,8 +39,24 @@ class SignalCacher:
         self.rabbitmq.connect()
         self.rabbitmq.declare_queue(self.input_queue, durable=True)
 
-        # Initialize Redis client
-        self.redis = RedisClient()
+        # Initialize Redis client with connection validation
+        logger.info("Connecting to Redis...")
+        try:
+            self.redis = RedisClient()
+
+            # CRITICAL: Validate connection immediately (fail fast if Redis unavailable)
+            if not self.redis.ping():
+                raise ConnectionError("Redis PING failed")
+
+            logger.info("✓ Redis connection validated")
+
+        except ConnectionError as e:
+            logger.critical(f"✗ Redis connection failed: {e}")
+            logger.critical("Signal Cacher CANNOT start without Redis")
+            raise SystemExit(1)  # Fail fast - don't start with broken cache
+        except Exception as e:
+            logger.critical(f"✗ Unexpected Redis initialization error: {e}", exc_info=True)
+            raise SystemExit(1)
 
         # Statistics
         self.stats = {"signals_processed": 0, "cache_updates": 0, "errors": 0}

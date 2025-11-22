@@ -11,8 +11,25 @@ Phase 3: Wards & Security
 
 from datetime import datetime
 from typing import Optional
+from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, validator
+
+
+# Trusted news source domain whitelist
+ALLOWED_NEWS_DOMAINS = {
+    "coindesk": ["coindesk.com", "www.coindesk.com"],
+    "cointelegraph": ["cointelegraph.com", "www.cointelegraph.com"],
+    "decrypt": ["decrypt.co", "www.decrypt.co"],
+    "bitcoin_magazine": ["bitcoinmagazine.com", "www.bitcoinmagazine.com"],
+    "cryptoslate": ["cryptoslate.com", "www.cryptoslate.com"],
+}
+
+# Price sanity bounds (prevent absurd values)
+PRICE_SANITY_BOUNDS = {
+    "max_crypto_price": 1_000_000.0,  # $1M per coin maximum (protects against data errors)
+    "min_crypto_price": 0.000001,      # Minimum price for micro-cap tokens
+}
 
 
 class RawNewsMessage(BaseModel):
@@ -29,10 +46,31 @@ class RawNewsMessage(BaseModel):
     content: str = Field(..., min_length=10, max_length=50000, description="Full article text")
 
     @validator("url")
-    def validate_url(cls, v):
-        """Ensure URL is well-formed"""
+    def validate_url(cls, v, values):
+        """
+        Ensure URL is well-formed and domain matches claimed source.
+
+        Security: Prevents URL spoofing attacks where source claims "coindesk"
+        but URL points to malicious domain.
+        """
         if not v.startswith(("http://", "https://")):
             raise ValueError("URL must start with http:// or https://")
+
+        # Extract domain from URL
+        parsed = urlparse(v)
+        domain = parsed.netloc.lower()
+
+        # Cross-validate domain against source (if source already validated)
+        if "source" in values:
+            source = values["source"].lower()
+            allowed_domains = ALLOWED_NEWS_DOMAINS.get(source, [])
+
+            if domain not in allowed_domains:
+                raise ValueError(
+                    f"URL domain '{domain}' does not match claimed source '{source}'. "
+                    f"Expected one of: {allowed_domains}"
+                )
+
         return v
 
     @validator("source")
@@ -64,10 +102,30 @@ class RawMarketDataMessage(BaseModel):
 
     timestamp: datetime = Field(..., description="Candle timestamp")
     pair: str = Field(..., regex=r"^[A-Z]{3,5}/[A-Z]{3,5}$", description="Trading pair (e.g. BTC/USDT)")
-    open: float = Field(..., gt=0, description="Opening price")
-    high: float = Field(..., gt=0, description="Highest price")
-    low: float = Field(..., gt=0, description="Lowest price")
-    close: float = Field(..., gt=0, description="Closing price")
+    open: float = Field(
+        ...,
+        gt=PRICE_SANITY_BOUNDS["min_crypto_price"],
+        lt=PRICE_SANITY_BOUNDS["max_crypto_price"],
+        description="Opening price",
+    )
+    high: float = Field(
+        ...,
+        gt=PRICE_SANITY_BOUNDS["min_crypto_price"],
+        lt=PRICE_SANITY_BOUNDS["max_crypto_price"],
+        description="Highest price",
+    )
+    low: float = Field(
+        ...,
+        gt=PRICE_SANITY_BOUNDS["min_crypto_price"],
+        lt=PRICE_SANITY_BOUNDS["max_crypto_price"],
+        description="Lowest price",
+    )
+    close: float = Field(
+        ...,
+        gt=PRICE_SANITY_BOUNDS["min_crypto_price"],
+        lt=PRICE_SANITY_BOUNDS["max_crypto_price"],
+        description="Closing price",
+    )
     volume: float = Field(..., ge=0, description="Trading volume")
 
     @validator("high")
