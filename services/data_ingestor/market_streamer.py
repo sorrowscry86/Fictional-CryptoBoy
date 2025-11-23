@@ -119,7 +119,7 @@ class MarketDataStreamer:
             return True
         return False
 
-    async def stream_symbol(self, symbol: str):
+    async def stream_symbol(self, symbol: str) -> None:
         """
         Stream OHLCV candles for a single symbol
 
@@ -167,7 +167,7 @@ class MarketDataStreamer:
         except Exception as e:
             logger.error(f"Fatal error streaming {symbol}: {e}", exc_info=True)
 
-    async def stream_all_symbols(self):
+    async def stream_all_symbols(self) -> None:
         """Stream all configured symbols concurrently"""
         logger.info(f"Starting streams for {len(self.symbols)} symbols")
 
@@ -177,7 +177,7 @@ class MarketDataStreamer:
         # Wait for all tasks (runs indefinitely)
         await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def run(self):
+    async def run(self) -> None:
         """Main entry point for the streamer"""
         logger.info("Market Data Streamer starting...")
 
@@ -190,7 +190,7 @@ class MarketDataStreamer:
         finally:
             await self.shutdown()
 
-    async def shutdown(self):
+    async def shutdown(self) -> None:
         """Clean shutdown of connections"""
         logger.info("Shutting down Market Data Streamer...")
 
@@ -209,7 +209,7 @@ class MarketDataStreamer:
             logger.error(f"Error closing RabbitMQ: {e}")
 
 
-async def main():
+async def main() -> None:
     """Main function"""
     # Get configuration from environment
     symbols_env = os.getenv("TRADING_PAIRS", "BTC/USDT,ETH/USDT,BNB/USDT")

@@ -171,7 +171,7 @@ class SentimentAnalyzer:
         """
         results = []
 
-        def process_headline(item):
+        def process_headline(item) -> Dict[str, Any]:
             if isinstance(item, dict):
                 headline = item.get("headline", "")
                 context = item.get("context", "")
@@ -260,7 +260,7 @@ class SentimentAnalyzer:
 
     def save_sentiment_scores(
         self, df: pd.DataFrame, output_file: str, timestamp_col: str = "timestamp", score_col: str = "sentiment_score"
-    ):
+    ) -> None:
         """
         Save sentiment scores to CSV
 

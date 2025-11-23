@@ -10,7 +10,7 @@ Phase 3: Wards & Security
 """
 
 from datetime import datetime
-from typing import Optional
+from typing import Any, Callable, Dict, Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, validator
@@ -46,7 +46,7 @@ class RawNewsMessage(BaseModel):
     content: str = Field(..., min_length=10, max_length=50000, description="Full article text")
 
     @validator("url")
-    def validate_url(cls, v, values):
+    def validate_url(cls, v: str, values: Dict[str, Any]) -> str:
         """
         Ensure URL is well-formed and domain matches claimed source.
 
@@ -74,7 +74,7 @@ class RawNewsMessage(BaseModel):
         return v
 
     @validator("source")
-    def validate_source(cls, v):
+    def validate_source(cls, v: str) -> str:
         """Whitelist allowed sources"""
         allowed_sources = {"coindesk", "cointelegraph", "decrypt", "bitcoin_magazine", "cryptoslate"}
         if v.lower() not in allowed_sources:
@@ -129,7 +129,7 @@ class RawMarketDataMessage(BaseModel):
     volume: float = Field(..., ge=0, description="Trading volume")
 
     @validator("high")
-    def validate_high(cls, v, values):
+    def validate_high(cls, v: float, values: Dict[str, Any]) -> float:
         """Ensure high >= low, open, close"""
         if "low" in values and v < values["low"]:
             raise ValueError("High must be >= low")
@@ -140,7 +140,7 @@ class RawMarketDataMessage(BaseModel):
         return v
 
     @validator("low")
-    def validate_low(cls, v, values):
+    def validate_low(cls, v: float, values: Dict[str, Any]) -> float:
         """Ensure low <= high, open, close"""
         if "open" in values and v > values["open"]:
             raise ValueError("Low must be <= open")
@@ -178,14 +178,14 @@ class SentimentSignalMessage(BaseModel):
     model: str = Field(default="finbert", description="Model used for analysis")
 
     @validator("score")
-    def validate_score_range(cls, v):
+    def validate_score_range(cls, v: float) -> float:
         """Ensure sentiment score is in valid range"""
         if not -1.0 <= v <= 1.0:
             raise ValueError("Sentiment score must be between -1.0 and +1.0")
         return v
 
     @validator("model")
-    def validate_model(cls, v):
+    def validate_model(cls, v: str) -> str:
         """Whitelist allowed sentiment models"""
         allowed_models = {"finbert", "distilroberta-financial", "ollama", "lmstudio"}
         if v.lower() not in allowed_models:
@@ -230,7 +230,7 @@ def validate_message(message_dict: dict, schema: BaseModel) -> BaseModel:
     return schema(**message_dict)
 
 
-def safe_message_consumer(callback, schema: BaseModel):
+def safe_message_consumer(callback: Callable, schema: BaseModel) -> Callable:
     """
     Decorator for RabbitMQ message consumers that validates input.
 
@@ -252,7 +252,7 @@ def safe_message_consumer(callback, schema: BaseModel):
 
     logger = logging.getLogger(__name__)
 
-    def wrapper(ch, method, properties, body):
+    def wrapper(ch: Any, method: Any, properties: Any, body: bytes) -> None:
         try:
             # Parse JSON
             message_dict = json.loads(body)

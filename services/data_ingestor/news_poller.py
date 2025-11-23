@@ -272,7 +272,7 @@ class NewsPoller:
 
         return total_published
 
-    def run(self):
+    def run(self) -> None:
         """Main polling loop"""
         logger.info("News Poller starting...")
         logger.info(f"Will poll every {self.poll_interval} seconds")
@@ -308,7 +308,7 @@ class NewsPoller:
         finally:
             self.shutdown()
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """Clean shutdown"""
         logger.info("Shutting down News Poller...")
 
@@ -321,7 +321,7 @@ class NewsPoller:
         logger.info(f"Total unique articles tracked: {len(self.published_articles)}")
 
 
-def main():
+def main() -> None:
     """Main function"""
     # Get configuration from environment
     poll_interval = int(os.getenv("NEWS_POLL_INTERVAL", 300))  # 5 minutes default

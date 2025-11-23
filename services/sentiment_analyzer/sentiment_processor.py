@@ -148,7 +148,7 @@ class SentimentProcessor:
 
         return pairs
 
-    def _test_connection(self):
+    def _test_connection(self) -> None:
         """Test connection to FinBERT model"""
         logger.info("Testing FinBERT sentiment analysis...")
         try:
@@ -369,7 +369,7 @@ class SentimentProcessor:
             # Note: Message will be ACKed and not requeued to prevent poison pill messages
             # Sentiment analysis failures are handled gracefully above with fallback
 
-    def run(self):
+    def run(self) -> None:
         """Start consuming news articles and processing sentiment"""
         logger.info("Sentiment Processor starting...")
         logger.info(f"Consuming from: {self.input_queue}")
@@ -394,7 +394,7 @@ class SentimentProcessor:
         finally:
             self.shutdown()
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """Clean shutdown"""
         logger.info("Shutting down Sentiment Processor...")
 
@@ -405,7 +405,7 @@ class SentimentProcessor:
             logger.error(f"Error closing RabbitMQ: {e}")
 
 
-def main():
+def main() -> None:
     """Main function"""
     processor = SentimentProcessor(input_queue="raw_news_data", output_queue="sentiment_signals_queue")
 

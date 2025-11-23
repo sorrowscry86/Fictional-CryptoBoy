@@ -168,7 +168,7 @@ class MarketDataCollector:
             logger.error(f"Error fetching latest candle for {symbol}: {e}")
         return None
 
-    def save_to_csv(self, df: pd.DataFrame, symbol: str, timeframe: str = '1h'):
+    def save_to_csv(self, df: pd.DataFrame, symbol: str, timeframe: str = '1h') -> None:
         """
         Save OHLCV data to CSV file
 

@@ -208,7 +208,7 @@ class UnifiedLLMClient:
         # Determine active backend
         self._select_backend()
 
-    def _select_backend(self):
+    def _select_backend(self) -> None:
         """Select the active LLM backend based on availability."""
         backends = []
 
@@ -248,7 +248,7 @@ class UnifiedLLMClient:
 
 
 # Quick test function
-def test_lmstudio():
+def test_lmstudio() -> None:
     """Test LM Studio connection and sentiment analysis."""
     print("Testing LM Studio Adapter...")
     print("=" * 60)

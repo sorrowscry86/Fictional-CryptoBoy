@@ -168,7 +168,7 @@ class SignalCacher:
             f"errors={self.stats['errors']}"
         )
 
-    def run(self):
+    def run(self) -> None:
         """Start consuming sentiment signals and caching"""
         logger.info("Signal Cacher starting...")
         logger.info(f"Consuming from: {self.input_queue}")
@@ -192,7 +192,7 @@ class SignalCacher:
         finally:
             self.shutdown()
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         """Clean shutdown"""
         logger.info("Shutting down Signal Cacher...")
 
@@ -212,7 +212,7 @@ class SignalCacher:
             logger.error(f"Error closing Redis: {e}")
 
 
-def main():
+def main() -> None:
     """Main function"""
     cacher = SignalCacher(input_queue="sentiment_signals_queue", cache_ttl=0)  # No expiry by default
 

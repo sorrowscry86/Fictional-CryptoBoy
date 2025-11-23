@@ -260,7 +260,7 @@ class SignalProcessor:
 
     def export_signals_csv(
         self, df: pd.DataFrame, filename: str = "sentiment_signals.csv", columns: Optional[List[str]] = None
-    ):
+    ) -> None:
         """
         Export processed signals to CSV
 

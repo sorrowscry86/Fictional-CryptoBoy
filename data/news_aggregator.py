@@ -213,7 +213,7 @@ class NewsAggregator:
 
         return filtered_df
 
-    def save_to_csv(self, df: pd.DataFrame, filename: str = 'news_articles.csv'):
+    def save_to_csv(self, df: pd.DataFrame, filename: str = 'news_articles.csv') -> None:
         """
         Save articles to CSV file
 

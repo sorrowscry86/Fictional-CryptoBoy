@@ -347,7 +347,7 @@ class StrategyStateMonitor:
             }
 
 
-def main():
+def main() -> None:
     """Test function - print entry conditions for BTC/USDT"""
     monitor = StrategyStateMonitor()
 

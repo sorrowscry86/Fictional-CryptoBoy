@@ -93,7 +93,7 @@ class DashboardMetricsCollector:
 
         logger.info("Dashboard Metrics Collector initialized")
 
-    def _connect_redis(self):
+    def _connect_redis(self) -> None:
         """Connect to Redis cache"""
         try:
             self.redis_client = redis.Redis(
@@ -412,7 +412,7 @@ class DashboardMetricsCollector:
 
         return alerts
 
-    async def broadcast_to_clients(self, message: Dict[str, Any]):
+    async def broadcast_to_clients(self, message: Dict[str, Any]) -> None:
         """Broadcast metrics to all connected WebSocket clients"""
         if not self.websocket_clients:
             return
@@ -443,7 +443,7 @@ class DashboardServer:
 
         logger.info(f"Dashboard server initialized on port {port}")
 
-    def setup_routes(self):
+    def setup_routes(self) -> None:
         """Setup HTTP routes"""
         self.app.router.add_get("/", self.handle_index)
         self.app.router.add_get("/ws", self.handle_websocket)
@@ -455,7 +455,7 @@ class DashboardServer:
         self.app.router.add_get("/api/open_trades", self.handle_get_open_trades)
         self.app.router.add_get("/api/audit_log", self.handle_get_audit_log)
 
-    async def handle_index(self, request):
+    async def handle_index(self, request: web.Request) -> web.Response:
         """Serve dashboard HTML"""
         html_path = project_root / "monitoring" / "dashboard.html"
 
@@ -467,12 +467,12 @@ class DashboardServer:
 
         return web.Response(text=html, content_type="text/html")
 
-    async def handle_metrics(self, request):
+    async def handle_metrics(self, request: web.Request) -> web.Response:
         """REST endpoint for current metrics"""
         metrics = await self.collector.collect_all_metrics()
         return web.json_response(metrics)
 
-    async def handle_force_buy(self, request):
+    async def handle_force_buy(self, request: web.Request) -> web.Response:
         """
         Force a buy trade via Freqtrade API (DRY_RUN only).
 
@@ -521,7 +521,7 @@ class DashboardServer:
                 status=500
             )
 
-    async def handle_force_sell(self, request):
+    async def handle_force_sell(self, request: web.Request) -> web.Response:
         """
         Force sell an open trade via Freqtrade API (DRY_RUN only).
 
@@ -564,7 +564,7 @@ class DashboardServer:
                 status=500
             )
 
-    async def handle_get_open_trades(self, request):
+    async def handle_get_open_trades(self, request: web.Request) -> web.Response:
         """Get list of currently open trades"""
         if not self.collector.trade_controller:
             return web.json_response(
@@ -583,7 +583,7 @@ class DashboardServer:
                 status=500
             )
 
-    async def handle_get_audit_log(self, request):
+    async def handle_get_audit_log(self, request: web.Request) -> web.Response:
         """Get manual trade audit log"""
         if not self.collector.trade_controller:
             return web.json_response(
@@ -604,7 +604,7 @@ class DashboardServer:
                 status=500
             )
 
-    async def handle_websocket(self, request):
+    async def handle_websocket(self, request: web.Request) -> web.WebSocketResponse:
         """WebSocket handler for real-time updates"""
         ws = web.WebSocketResponse()
         await ws.prepare(request)
@@ -630,7 +630,7 @@ class DashboardServer:
 
         return ws
 
-    async def metrics_broadcast_loop(self):
+    async def metrics_broadcast_loop(self) -> None:
         """Background task to broadcast metrics every 5 seconds"""
         while True:
             try:
@@ -643,16 +643,16 @@ class DashboardServer:
             except Exception as e:
                 logger.error(f"Error in metrics broadcast loop: {e}")
 
-    async def start_background_tasks(self, app):
+    async def start_background_tasks(self, app: web.Application) -> None:
         """Start background tasks"""
         app["metrics_broadcast"] = asyncio.create_task(self.metrics_broadcast_loop())
 
-    async def cleanup_background_tasks(self, app):
+    async def cleanup_background_tasks(self, app: web.Application) -> None:
         """Cleanup background tasks"""
         app["metrics_broadcast"].cancel()
         await app["metrics_broadcast"]
 
-    def run(self):
+    def run(self) -> None:
         """Run the dashboard server"""
         self.app.on_startup.append(self.start_background_tasks)
         self.app.on_cleanup.append(self.cleanup_background_tasks)
@@ -663,7 +663,7 @@ class DashboardServer:
         web.run_app(self.app, host="0.0.0.0", port=self.port)
 
 
-def main():
+def main() -> None:
     """Main entry point"""
     logger.info("=== VoidCat RDC - CryptoBoy Monitoring Dashboard ===")
     logger.info("NO SIMULATIONS LAW: All metrics from real system state")

@@ -255,7 +255,7 @@ class RiskManager:
 
         return result
 
-    def track_trade(self, pair: str, entry_price: float, position_size: float, timestamp: Optional[datetime] = None):
+    def track_trade(self, pair: str, entry_price: float, position_size: float, timestamp: Optional[datetime] = None) -> None:
         """
         Track a new trade
 
@@ -275,7 +275,7 @@ class RiskManager:
 
         logger.info(f"Tracking new trade: {pair} @ {entry_price}")
 
-    def close_position(self, pair: str, exit_price: float):
+    def close_position(self, pair: str, exit_price: float) -> None:
         """
         Close a tracked position
 
@@ -293,7 +293,7 @@ class RiskManager:
         else:
             logger.warning(f"Attempted to close unknown position: {pair}")
 
-    def _log_risk_event(self, event: Dict):
+    def _log_risk_event(self, event: Dict) -> None:
         """
         Log a risk management event
 

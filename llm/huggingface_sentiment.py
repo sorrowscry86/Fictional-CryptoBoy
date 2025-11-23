@@ -243,7 +243,7 @@ class UnifiedSentimentAnalyzer:
             return 0.0  # Neutral on complete failure
 
 
-def test_financial_models():
+def test_financial_models() -> None:
     """Test the financial sentiment models"""
 
     print("=" * 80)

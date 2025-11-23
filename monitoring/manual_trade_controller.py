@@ -388,7 +388,7 @@ class ManualTradeController:
             return []
 
 
-def main():
+def main() -> None:
     """Test function - demonstrate manual trade controller"""
     try:
         controller = ManualTradeController()

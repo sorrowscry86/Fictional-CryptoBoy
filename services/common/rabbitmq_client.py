@@ -274,7 +274,7 @@ def create_consumer_callback(process_func: Callable[[Dict[str, Any]], None], aut
         Callback function compatible with pika's basic_consume
     """
 
-    def callback(ch, method, properties, body):
+    def callback(ch: Any, method: Any, properties: Any, body: bytes) -> None:
         try:
             # Decode and parse message
             message = json.loads(body.decode("utf-8"))
