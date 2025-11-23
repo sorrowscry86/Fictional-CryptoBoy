@@ -1,0 +1,36 @@
+# Dockerfile for running tests
+# VoidCat RDC - CryptoBoy Trading Bot
+
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    curl \
+    netcat-openbsd \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements
+COPY requirements.txt .
+COPY services/requirements.txt ./services/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install --no-cache-dir -r services/requirements.txt && \
+    pip install --no-cache-dir pytest pytest-cov pytest-asyncio
+
+# Copy test code
+COPY tests/ ./tests/
+COPY services/ ./services/
+COPY llm/ ./llm/
+COPY data/ ./data/
+
+# Set Python path
+ENV PYTHONPATH=/app \
+    PYTHONUNBUFFERED=1
+
+# Default command
+CMD ["pytest", "tests/", "-v"]

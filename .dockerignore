@@ -1,74 +1,106 @@
-# Git
-.git
-.gitignore
-.gitattributes
+# VoidCat RDC - CryptoBoy .dockerignore
+# Exclude unnecessary files from Docker builds to speed up build context transfer
 
-# Documentation
-*.md
-docs/
-README.md
-QUICKSTART.md
-CLAUDE.md
-LICENSE
-
-# Development
-.vscode
-.idea
-*.pyc
-__pycache__
-.pytest_cache
-*.egg-info
-.env.example
-.editorconfig
-
-# Test & Logs
-logs/
-test_run_*.md
-*.log
-monitor_output.txt
-TEST_RUN_*.md
-
-# Data (can be large)
-data/news_data/
-data/ohlcv_data/
-backtest/backtest_reports/
-
-# Database backups
-*.sqlite.bak*
-*.db.bak*
-
-# OS
-.DS_Store
-Thumbs.db
-*.swp
-*.swo
-
-# Build artifacts
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
 dist/
 build/
 *.egg
 
-# Docker
-Dockerfile*
-docker-compose*.yml
-.dockerignore
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
 
-# Batch files
+# Git
+.git/
+.github/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.DS_Store
+
+# Documentation (not needed in container)
+*.md
+docs/
+.specstory/
+.codacy/
+.claude/
+.zencoder/
+
+# Data files (mounted as volumes)
+data/ohlcv_data/
+data/news_data/
+logs/
+user_data/
+*.sqlite
+*.db
+*.bak
+
+# Test files
+tests/
+pytest_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+.coveragerc
+*.cover
+.hypothesis/
+
+# Backtest reports
+backtest/backtest_reports/
+
+# Build artifacts
+*.tar.gz
+*.zip
+
+# Batch files (Windows only)
 *.bat
 *.ps1
 
-# Configuration examples
-config/backtest_config.json.example
+# Config examples
+.env.example
 
-# Node modules (if any frontend)
-node_modules/
-
-# Temporary
-tmp/
-temp/
+# Temporary files
 *.tmp
+*.temp
+tmp/
+monitor_output.txt
 
-# CI/CD
-.github/
-.gitlab-ci.yml
-.travis.yml
+# Reports and validation files
+*_REPORT.md
+*_SUMMARY.md
+*_RESULTS.md
+*_STATUS.md
+*.json.bak
+repomix-output.xml
+CryptoBoy_RDC.xml
+coinbase_validation_results.json
+*_report.json
+
+# Pre-commit
+.pre-commit-config.yaml
+.pre-commit-hooks.yaml
+
+# Linting configs (not needed at runtime)
+.flake8
+.pylintrc
+pyproject.toml
+Makefile
+
+# Docker files (don't copy docker files into docker)
+docker-compose*.yml
+Dockerfile*
+.dockerignore

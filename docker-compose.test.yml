@@ -1,0 +1,67 @@
+version: '3.8'
+
+# Docker Compose configuration for running tests
+# VoidCat RDC - CryptoBoy Trading Bot
+
+services:
+  rabbitmq-test:
+    image: rabbitmq:3-management-alpine
+    container_name: cryptoboy-rabbitmq-test
+    environment:
+      - RABBITMQ_DEFAULT_USER=cryptoboy
+      - RABBITMQ_DEFAULT_PASS=cryptoboy123
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  redis-test:
+    image: redis:alpine
+    container_name: cryptoboy-redis-test
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  test-runner:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: cryptoboy-test-runner
+    depends_on:
+      rabbitmq-test:
+        condition: service_healthy
+      redis-test:
+        condition: service_healthy
+    environment:
+      - RABBITMQ_HOST=rabbitmq-test
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=cryptoboy
+      - RABBITMQ_PASS=cryptoboy123
+      - REDIS_HOST=redis-test
+      - REDIS_PORT=6379
+      - PYTHONPATH=/app
+    volumes:
+      - ./tests:/app/tests:ro
+      - ./services:/app/services:ro
+      - ./llm:/app/llm:ro
+      - ./data:/app/data:ro
+      - ./.coveragerc:/app/.coveragerc:ro
+    command: pytest tests/integration/ -v -m integration
+    networks:
+      - test-network
+
+networks:
+  test-network:
+    driver: bridge
