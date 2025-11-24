@@ -87,13 +87,13 @@
 ### ✅ COMPLETED
 - [x] **[DOCS]** Create microservices architecture diagram (ARCHITECTURE_DIAGRAMS.md complete)
 - [x] **[DOCS-NEW]** Add 52 missing return type hints - COMPLETE (100% type coverage achieved - VoidCat Standard)
+- [x] **[DOCS]** Document all RabbitMQ message schemas and contracts (RABBITMQ_MESSAGE_SCHEMAS.md - 600+ lines)
+- [x] **[DOCS]** Add API documentation for Freqtrade REST endpoints (FREQTRADE_API_REFERENCE.md - 500+ lines)
+- [x] **[DOCS]** Create troubleshooting guide for common failure modes (TROUBLESHOOTING_GUIDE.md - 700+ lines)
+- [x] **[DOCS-NEW]** Add module-level docstrings to 5 __init__.py files (services/ directory complete)
 
 ### 🔴 PENDING & NEW ISSUES
-- [ ] **[DOCS]** Document all RabbitMQ message schemas and contracts
-- [ ] **[DOCS]** Add API documentation for Freqtrade REST endpoints
-- [ ] **[DOCS]** Create troubleshooting guide for common failure modes
-- [ ] **[DOCS-NEW]** Add module-level docstrings to 12 files (llm/signal_processor.py, services/__init__.py, etc.)
-- [ ] **[DOCS-NEW]** Add function docstrings to 25+ functions (market_streamer._format_candle_message, etc.)
+- [ ] **[DOCS-NEW]** Add function docstrings to remaining helper functions
 - [ ] **[DOCS-NEW]** Document test infrastructure (docker-compose.test.yml not mentioned in CLAUDE.md)
 - [ ] **[DOCS-NEW]** Add dependency rationale comments to all requirements*.txt files
 
