@@ -275,6 +275,22 @@ def create_consumer_callback(process_func: Callable[[Dict[str, Any]], None], aut
     """
 
     def callback(ch: Any, method: Any, properties: Any, body: bytes) -> None:
+        """
+        RabbitMQ consumer callback that processes incoming messages.
+
+        Decodes JSON messages, calls the user-provided processing function,
+        and handles message acknowledgment based on configuration.
+
+        Args:
+            ch: RabbitMQ channel object
+            method: RabbitMQ method frame with delivery_tag
+            properties: RabbitMQ properties frame
+            body: Raw message body as bytes
+
+        Error Handling:
+            - JSONDecodeError: Logs error and nacks message (no requeue)
+            - Processing exceptions: Logged with traceback, message handling depends on auto_ack setting
+        """
         try:
             # Decode and parse message
             message = json.loads(body.decode("utf-8"))

@@ -425,11 +425,90 @@ launcher.bat  # Select Mode 1 (microservices)
 start_monitor.bat
 ```
 
-### Testing Approach
+### Testing Infrastructure
 
-**Current State**: Manual testing workflow (no pytest configuration yet)
+**Test Suite Overview**: Comprehensive multi-tier testing with Docker-based test infrastructure supporting unit, integration, e2e, and stress testing.
 
-**Manual Test Commands**:
+**Test Infrastructure Files**:
+- `docker-compose.test.yml` - Isolated test environment (RabbitMQ, Redis, test runner)
+- `Dockerfile.test` - Test container with pytest + dependencies
+- `.coveragerc` - Coverage configuration (excludes tests/, data/, logs/)
+- `run_stress_tests.ps1` - Automated stress test runner (PowerShell)
+
+**Test Directory Structure**:
+```
+tests/
+├── unit/                          # Unit tests for individual components
+│   ├── test_rabbitmq_client.py    # RabbitMQ client unit tests
+│   ├── test_redis_client.py       # Redis client unit tests
+│   └── test_signal_processor.py   # Signal processing unit tests
+├── integration/                   # Integration tests (service-to-service)
+│   ├── test_rabbitmq_integration.py   # RabbitMQ message flow
+│   ├── test_redis_integration.py      # Redis cache operations
+│   └── test_sentiment_integration.py  # Sentiment pipeline
+├── e2e/                          # End-to-end system tests
+│   ├── test_docker_deployment.py  # Docker deployment validation
+│   └── test_full_system.py        # Full pipeline test (news → trades)
+├── stress_tests/                 # Performance and load tests
+│   ├── rabbitmq_load_test.py     # 10,000 message throughput test
+│   ├── redis_stress_test.py      # 10,000 rapid cache operations
+│   └── sentiment_load_test.py    # 100 concurrent article analysis
+└── monitoring/                   # System health monitoring
+    ├── system_health_check.py    # Service health diagnostics
+    └── latency_monitor.py         # E2E latency measurement
+```
+
+**Running Tests**:
+
+```bash
+# 1. Docker-based integration tests (recommended for CI/CD)
+docker-compose -f docker-compose.test.yml up --build --abort-on-container-exit
+docker-compose -f docker-compose.test.yml down
+
+# 2. Local unit tests (requires dev environment)
+pytest tests/unit/ -v
+
+# 3. Integration tests (requires running infrastructure)
+pytest tests/integration/ -v -m integration
+
+# 4. E2E tests (requires full production stack)
+pytest tests/e2e/ -v -m e2e
+
+# 5. Stress tests (PowerShell - Windows)
+.\run_stress_tests.ps1
+# Runs: RabbitMQ (10k msgs), Redis (10k ops), Sentiment (100 articles), Latency (20 samples)
+# Results saved to: tests/stress_tests/results_<timestamp>/
+
+# 6. Coverage report
+pytest tests/ --cov=. --cov-report=html
+# Report: htmlcov/index.html
+```
+
+**Test Environment Configuration**:
+
+The test infrastructure uses isolated ports to avoid conflicts with production:
+- **RabbitMQ Test**: Port 5673 (management: 15673)
+- **Redis Test**: Port 6380
+- **Network**: `test-network` (isolated bridge)
+
+Environment variables for test runner:
+```bash
+RABBITMQ_HOST=rabbitmq-test
+RABBITMQ_PORT=5672
+RABBITMQ_USER=cryptoboy
+RABBITMQ_PASS=cryptoboy123
+REDIS_HOST=redis-test
+REDIS_PORT=6379
+PYTHONPATH=/app
+```
+
+**Stress Test Targets** (from `run_stress_tests.ps1`):
+1. **RabbitMQ Load**: 10,000 messages in parallel mode
+2. **Redis Stress**: 10,000 operations in parallel mode
+3. **Sentiment Load**: 100 concurrent articles with 4 workers
+4. **E2E Latency**: 20 measurements at 10-second intervals
+
+**Manual Integration Tests** (for quick validation):
 ```bash
 # API validation
 python scripts/verify_api_keys.py
@@ -437,7 +516,7 @@ python scripts/verify_api_keys.py
 # LM Studio integration
 python scripts/test_lmstudio.py
 
-# Sentiment analysis
+# Sentiment analysis (FinBERT)
 python -c "from llm.huggingface_sentiment import HuggingFaceFinancialSentiment; \
     analyzer = HuggingFaceFinancialSentiment(); \
     print(analyzer.analyze_sentiment('Bitcoin surges to new highs'))"
@@ -446,7 +525,21 @@ python -c "from llm.huggingface_sentiment import HuggingFaceFinancialSentiment; 
 python scripts/insert_test_trades.py
 ```
 
-**Future**: Add pytest configuration and unit test suite for all services.
+**Coverage Configuration** (`.coveragerc`):
+- Source: All Python files
+- Omitted: tests/, venv/, data/, logs/, backtest_reports/
+- Report: Shows missing lines, 2 decimal precision
+- HTML output: `htmlcov/` directory
+
+**pytest Markers**:
+- `@pytest.mark.integration` - Integration tests requiring infrastructure
+- `@pytest.mark.e2e` - End-to-end system tests
+- `@pytest.mark.asyncio` - Async test support
+
+**Test Dependencies** (installed in Dockerfile.test):
+- pytest - Test framework
+- pytest-cov - Coverage plugin
+- pytest-asyncio - Async test support
 
 ### Deployment Checklist
 

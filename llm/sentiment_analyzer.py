@@ -172,6 +172,18 @@ class SentimentAnalyzer:
         results = []
 
         def process_headline(item) -> Dict[str, Any]:
+            """
+            Process a single headline item and return sentiment analysis.
+
+            Handles both dict and string inputs, extracting headline/context
+            and preserving metadata from dict inputs.
+
+            Args:
+                item: Either a dict with 'headline'/'context' keys or a string headline
+
+            Returns:
+                Dict with 'headline', 'sentiment_score', and any additional metadata
+            """
             if isinstance(item, dict):
                 headline = item.get("headline", "")
                 context = item.get("context", "")

@@ -1,15 +1,19 @@
 # Monitoring Dashboard Dependencies
 # VoidCat RDC - CryptoBoy Trading System
+# Used by: dashboard_service.py, manual_trade_controller.py, strategy_monitor.py
 
-# Web framework
-aiohttp>=3.8.0
+# Web Framework
+aiohttp>=3.8.0  # Async HTTP server for dashboard web interface (WebSocket support for real-time updates)
+                # Provides: /metrics endpoint, /force_buy, /force_sell manual controls, WebSocket streaming
 
-# Redis client
-redis>=4.5.0
+# Redis Client
+redis>=4.5.0  # Read sentiment cache (sentiment:{pair}) and trade history for dashboard display
+              # Used for: Real-time sentiment display, historical data retrieval, system health checks
 
 # Docker SDK
-docker>=6.0.0
+docker>=6.0.0  # Docker container management and health monitoring (check service status, logs, restarts)
+               # Used by: system_health_check.py for service diagnostics and automated recovery
 
-# Standard dependencies (should already be available)
-python-dotenv>=1.0.0
-colorlog>=6.7.0
+# Configuration & Logging
+python-dotenv>=1.0.0  # Environment variable loading (REDIS_HOST, FREQTRADE_API_URL, dashboard port config)
+colorlog>=6.7.0       # Structured logging for dashboard operations, API calls, and error tracking

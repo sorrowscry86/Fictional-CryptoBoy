@@ -1,33 +1,36 @@
-# Common dependencies for CryptoBoy microservices
+# Microservices Common Dependencies (Legacy)
+# Note: This file exists for backwards compatibility. New services should use:
+#   - requirements-common.txt (for news_poller, sentiment_processor, signal_cacher)
+#   - requirements-ingestor.txt (for market_streamer with websocket support)
 
-# Message queue
-pika>=1.3.0
+# Message Queue
+pika>=1.3.0  # RabbitMQ client for inter-service messaging (3 queues: raw_news_data, raw_market_data, sentiment_signals_queue)
 
 # Cache
-redis>=4.5.0
+redis>=4.5.0  # Redis client for sentiment cache operations (hash structures: sentiment:{pair})
 
-# Data processing
-pandas>=1.5.0
-numpy>=1.24.0
+# Data Processing
+pandas>=1.5.0  # Time-series data handling, OHLCV manipulation, sentiment merging
+numpy>=1.24.0  # Numerical computations for sentiment scores, price calculations
 
-# HTTP clients
-requests>=2.28.0
+# HTTP Clients
+requests>=2.28.0  # HTTP requests for RSS feeds, LM Studio API, external integrations
 
-# News aggregation
-feedparser>=6.0.0
-beautifulsoup4>=4.11.0
-lxml>=4.9.0
+# News Aggregation
+feedparser>=6.0.0      # RSS feed parsing (5 sources: CoinDesk, CoinTelegraph, Decrypt, Bitcoin Magazine, CryptoSlate)
+beautifulsoup4>=4.11.0 # HTML parsing for article content extraction and text cleaning
+lxml>=4.9.0            # XML/HTML parser backend for feedparser (high performance)
 
-# Exchange integration
-ccxt>=4.1.0
-# Note: ccxt.pro requires paid subscription, using standard ccxt with REST API
+# Exchange Integration
+ccxt>=4.1.0  # Unified exchange API (REST only - WebSocket support in requirements-ingestor.txt)
+             # Used for market data collection, exchange connectivity, order execution fallback
 
 # Configuration
-python-dotenv>=1.0.0
+python-dotenv>=1.0.0  # Load service configs from .env (RABBITMQ_*, REDIS_*, TRADING_PAIRS, etc.)
 
 # Logging
-colorlog>=6.7.0
+colorlog>=6.7.0  # Structured colored logging for service health, errors, and performance monitoring
 
-# FinBERT sentiment analysis (for sentiment-processor service)
-torch>=2.0.0
-transformers>=4.30.0
+# LLM / Sentiment Analysis
+torch>=2.0.0          # PyTorch deep learning framework (FinBERT model inference backend)
+transformers>=4.30.0  # Hugging Face transformers library (FinBERT: ProsusAI/finbert for financial sentiment)

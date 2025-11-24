@@ -253,6 +253,26 @@ def safe_message_consumer(callback: Callable, schema: BaseModel) -> Callable:
     logger = logging.getLogger(__name__)
 
     def wrapper(ch: Any, method: Any, properties: Any, body: bytes) -> None:
+        """
+        RabbitMQ consumer callback wrapper with Pydantic schema validation.
+
+        Validates incoming messages against the specified Pydantic schema before
+        passing to the user callback. Automatically handles acknowledgment and
+        error logging for malformed/invalid messages.
+
+        Args:
+            ch: RabbitMQ channel object
+            method: RabbitMQ method frame with delivery_tag
+            properties: RabbitMQ properties frame
+            body: Raw message body as bytes
+
+        Behavior:
+            - Parses JSON from body
+            - Validates against Pydantic schema
+            - Calls user callback with validated message object
+            - Auto-acknowledges on success
+            - Rejects on validation failure (nack without requeue)
+        """
         try:
             # Parse JSON
             message_dict = json.loads(body)
